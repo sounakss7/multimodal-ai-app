@@ -1,6 +1,0 @@
-streamlit
-python-dotenv
-langchain
-langchain-google-genai
-google-generativeai
-
