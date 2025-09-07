@@ -86,8 +86,7 @@ with col2:
     clear_clicked = st.button("Clear Conversation")
 
 if clear_clicked:
-    st.session_state.conversation = []
-    st.experimental_rerun()
+    st.session_state.conversation = []  # just clear state (no rerun needed)
 
 if process_clicked and query:
     cat, ans = route_task(st.session_state.conversation, query)
