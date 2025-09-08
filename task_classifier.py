@@ -2,7 +2,6 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
 
 # Load .env only for local development
 load_dotenv()
@@ -16,7 +15,7 @@ if not google_api_key:
 
 st.title("⚡ Fast Task Classifier & Gemini Chat")
 
-# ✅ Cache LLM initialization (faster reloads)
+# ✅ Cache LLM initialization
 @st.cache_resource
 def load_llm():
     return ChatGoogleGenerativeAI(
@@ -31,15 +30,13 @@ llm = load_llm()
 if "conversation" not in st.session_state:
     st.session_state.conversation = []
 
-# 🚀 Lightweight Rule-Based Task Classifier (much faster than LLM call)
+# 🚀 Smarter Rule-Based Classifier
 def classify_query(query: str) -> str:
     q = query.lower()
     if any(word in q for word in ["draw", "image", "picture", "diagram", "photo", "generate image"]):
         return "Image Task"
-    elif any(word in q for word in ["who built", "who created", "write", "explain", "generate", "answer"]):
-        return "Text Task"
-    else:
-        return "Other"
+    # everything else defaults to text
+    return "Text Task"
 
 # Compose prompt with conversation history
 def compose_prompt(conversation, current_query):
@@ -65,7 +62,7 @@ def handle_other_task(query: str):
     return "⚠️ Sorry, I don’t know how to handle this task yet."
 
 def route_task(conversation, query: str):
-    category = classify_query(query)  # ✅ instant classification
+    category = classify_query(query)
     if category == "Text Task":
         result = handle_text_task(conversation, query)
     elif category == "Image Task":
