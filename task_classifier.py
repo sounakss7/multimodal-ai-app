@@ -14,35 +14,34 @@ if not google_api_key:
     st.error("❌ GOOGLE_API_KEY not found! Please set it in .env (local) or Streamlit Secrets (cloud).")
     st.stop()
 
-st.title("Task Classifier and Gemini Text Generator with Follow-Up")
+st.title("⚡ Fast Task Classifier & Gemini Chat")
 
-# Initialize Gemini LLM
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    temperature=0,
-    google_api_key=google_api_key
-)
+# ✅ Cache LLM initialization (faster reloads)
+@st.cache_resource
+def load_llm():
+    return ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        temperature=0,
+        google_api_key=google_api_key
+    )
 
-# Session-state persistent conversation history
+llm = load_llm()
+
+# ✅ Session-state persistent conversation history
 if "conversation" not in st.session_state:
     st.session_state.conversation = []
 
-# Task classifier prompt template
-router_prompt = PromptTemplate(
-    input_variables=["query"],
-    template="""
-    You are a task classifier. 
-    Based on the user query, classify it into one of the following categories:
-    - "Text Task"
-    - "Image Task"
-    - "Other"
-    Query: {query}
-    Category:
-    """
-)
-router_chain = router_prompt | llm
+# 🚀 Lightweight Rule-Based Task Classifier (much faster than LLM call)
+def classify_query(query: str) -> str:
+    q = query.lower()
+    if any(word in q for word in ["draw", "image", "picture", "diagram", "photo", "generate image"]):
+        return "Image Task"
+    elif any(word in q for word in ["who built", "who created", "write", "explain", "generate", "answer"]):
+        return "Text Task"
+    else:
+        return "Other"
 
-# Compose prompt with conversation history for context and current input
+# Compose prompt with conversation history
 def compose_prompt(conversation, current_query):
     prompt_text = ""
     for user_q, assistant_a in conversation:
@@ -66,8 +65,7 @@ def handle_other_task(query: str):
     return "⚠️ Sorry, I don’t know how to handle this task yet."
 
 def route_task(conversation, query: str):
-    classification = router_chain.invoke({"query": query})
-    category = getattr(classification, 'content', str(classification)).strip()
+    category = classify_query(query)  # ✅ instant classification
     if category == "Text Task":
         result = handle_text_task(conversation, query)
     elif category == "Image Task":
@@ -86,11 +84,11 @@ with col2:
     clear_clicked = st.button("Clear Conversation")
 
 if clear_clicked:
-    st.session_state.conversation = []  # just clear state (no rerun needed)
+    st.session_state.conversation = []  # reset history
 
 if process_clicked and query:
     cat, ans = route_task(st.session_state.conversation, query)
-    st.session_state.conversation.append((query, ans))  # Save history
+    st.session_state.conversation.append((query, ans))
     st.write(f"**Task Type:** {cat}")
     st.markdown(f"**Answer:**\n\n{ans}")
 
