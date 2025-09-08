@@ -1,21 +1,15 @@
 # Task Routing Gemini Chat Agent
 
-A modular AI-powered chat agent that intelligently **routes user queries** to the best-suited Large Language Model (LLM) based on the task type (text or image).  
-The agent classifies the incoming request, determines whether it’s an image or text task, and then uses the most appropriate LLM from a group of models to return the final response.
+The **Task Routing Gemini Chat Agent** is an intelligent, text-based conversational system that routes and executes user queries efficiently.  
+It uses **Google Gemini LLM** for natural language understanding and supports **contextual memory**, allowing it to retain and reference past conversations to provide more accurate and natural responses.
 
 ---
 
 ## 🚀 Features
-- **Task Classification** – Automatically distinguishes between text and image-based tasks.  
-- **Dynamic Model Routing** – Selects the best LLM for the given task type.  
-- **Extensible Design** – Easily add new LLMs or extend with additional task types.  
-- **Environment Secure** – Uses `.env` to store API keys securely.  
+- **Text-based Query Handling** – Designed for executing and responding to text queries.  
+- **Task Routing** – Dynamically routes queries to the most appropriate function or model.  
+- **Conversation Memory** – Remembers past interactions for contextual responses.  
+- **Secure API Integration** – Uses `.env` file to safely store API keys.  
+- **Extensible Architecture** – Easy to add more capabilities, tools, or task-specific functions.  
 
 ---
-
-## 🛠️ Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/sounakss7/Task-Routing-Gemini-Chat-Agent.git
-   cd Task-Routing-Gemini-Chat-Agent
