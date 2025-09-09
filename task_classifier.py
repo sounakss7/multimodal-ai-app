@@ -1,6 +1,6 @@
 import os
-import streamlit as st
 import requests
+import streamlit as st
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -16,8 +16,7 @@ if not google_api_key:
     st.stop()
 
 if not hf_api_key:
-    st.error("❌ HF_API_KEY not found! Please set it in .env (local) or Streamlit Secrets (cloud).")
-    st.stop()
+    st.warning("⚠️ Hugging Face API key not found. Image generation will not work.")
 
 st.title("⚡ Task Classifier with Gemini + Hugging Face Images")
 
@@ -63,9 +62,12 @@ def handle_text_task(conversation, query: str):
     response = llm.invoke(prompt)
     return getattr(response, 'content', str(response))
 
-# Handler for image tasks using Hugging Face
+# ✅ Handler for Hugging Face Image tasks
 def handle_image_task(prompt: str):
-    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2"
+    if not hf_api_key:
+        return "⚠️ Hugging Face API key missing. Please add it to use image generation."
+
+    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
 
     try:
@@ -73,7 +75,6 @@ def handle_image_task(prompt: str):
         if response.status_code != 200:
             return f"⚠️ Image generation failed: {response.text}"
 
-        # Save image locally
         img_path = "generated.png"
         with open(img_path, "wb") as f:
             f.write(response.content)
@@ -83,7 +84,9 @@ def handle_image_task(prompt: str):
     except Exception as e:
         return f"⚠️ Error: {e}"
 
-# Route tasks
+def handle_other_task(query: str):
+    return "⚠️ Sorry, I don’t know how to handle this task yet."
+
 def route_task(conversation, query: str):
     category = classify_query(query)
     if category == "Text Task":
@@ -91,7 +94,7 @@ def route_task(conversation, query: str):
     elif category == "Image Task":
         result = handle_image_task(query)
     else:
-        result = "⚠️ Sorry, I don’t know how to handle this task yet."
+        result = handle_other_task(query)
     return category, result
 
 # Streamlit UI
