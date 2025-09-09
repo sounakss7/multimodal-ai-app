@@ -1,19 +1,24 @@
 import os
 import streamlit as st
+import requests
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Load .env only for local development
 load_dotenv()
 
-# Get API key (Streamlit Secrets first, fallback to .env)
+# Get API keys (Streamlit Secrets first, fallback to .env)
 google_api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+fal_api_key = st.secrets.get("FAL_API_KEY", os.getenv("FAL_API_KEY"))
 
 if not google_api_key:
-    st.error("❌ GOOGLE_API_KEY not found! Please set it in .env (local) or Streamlit Secrets (cloud).")
+    st.error("❌ GOOGLE_API_KEY not found! Please set it in .env or Streamlit Secrets.")
     st.stop()
 
-st.title("⚡ Fast Task Classifier & Gemini Chat")
+if not fal_api_key:
+    st.warning("⚠️ FAL_API_KEY not found! Image tasks will not work.")
+
+st.title("⚡ Task Classifier with Gemini + FAL AI Images")
 
 # ✅ Cache LLM initialization
 @st.cache_resource
@@ -30,12 +35,11 @@ llm = load_llm()
 if "conversation" not in st.session_state:
     st.session_state.conversation = []
 
-# 🚀 Smarter Rule-Based Classifier
+# 🚀 Rule-Based Classifier
 def classify_query(query: str) -> str:
     q = query.lower()
     if any(word in q for word in ["draw", "image", "picture", "diagram", "photo", "generate image"]):
         return "Image Task"
-    # everything else defaults to text
     return "Text Task"
 
 # Compose prompt with conversation history
@@ -58,6 +62,33 @@ def handle_text_task(conversation, query: str):
     response = llm.invoke(prompt)
     return getattr(response, 'content', str(response))
 
+# ✅ Handler for FAL image generation
+def handle_image_task(query: str):
+    if not fal_api_key:
+        return "❌ FAL API key not set. Please configure it to enable image generation."
+
+    api_url = "https://api.fal.ai/v1/run/stable-diffusion-xl"
+    headers = {
+        "Authorization": f"Key {fal_api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {"prompt": query}
+
+    with st.spinner("🎨 Generating image with FAL AI..."):
+        response = requests.post(api_url, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        result = response.json()
+        image_url = result.get("images", [{}])[0].get("url", None)
+
+        if image_url:
+            st.image(image_url, caption=f"Generated for: {query}")
+            return "✅ Image generated successfully!"
+        else:
+            return "⚠️ No image returned. Try another prompt."
+    else:
+        return f"⚠️ Image generation failed: {response.text}"
+
 def handle_other_task(query: str):
     return "⚠️ Sorry, I don’t know how to handle this task yet."
 
@@ -66,7 +97,7 @@ def route_task(conversation, query: str):
     if category == "Text Task":
         result = handle_text_task(conversation, query)
     elif category == "Image Task":
-        result = "🖼️ Image generation is not enabled in this app."
+        result = handle_image_task(query)
     else:
         result = handle_other_task(query)
     return category, result
@@ -82,6 +113,7 @@ with col2:
 
 if clear_clicked:
     st.session_state.conversation = []  # reset history
+    st.rerun()
 
 if process_clicked and query:
     cat, ans = route_task(st.session_state.conversation, query)
