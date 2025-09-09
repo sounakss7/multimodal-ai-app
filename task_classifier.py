@@ -37,11 +37,14 @@ def handle_text_task(task):
 def handle_image_task(prompt: str):
     if not hf_api_key:
         return "⚠️ Hugging Face API key missing. Please add it to use image generation."
-    # Use supported, public model
-    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+    api_url = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
+    payload = {
+        "inputs": prompt,
+        "options": {"wait_for_model": True}
+    }
     try:
-        response = requests.post(api_url, headers=headers, json={"inputs": prompt})
+        response = requests.post(api_url, headers=headers, json=payload)
         if response.status_code != 200:
             return f"⚠️ API error {response.status_code}: {response.text}"
         content_type = response.headers.get("content-type", "")
@@ -59,6 +62,7 @@ def handle_image_task(prompt: str):
             return f"⚠️ Error decoding image: {img_err}.\nRaw response headers: {response.headers}\nRaw response bytes: {response.content[:100]}"
     except Exception as e:
         return f"⚠️ Error: {e}"
+
 
 # Streamlit UI
 st.set_page_config(page_title="Task Classifier", page_icon="⚡", layout="centered")
@@ -92,3 +96,4 @@ st.subheader("Conversation History ↔")
 for i, (q, a) in enumerate(st.session_state.history, 1):
     st.write(f"**User:** {q}")
     st.write(f"**Assistant:** {a}")
+
