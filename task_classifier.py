@@ -1,36 +1,27 @@
 import os
 import streamlit as st
+import requests
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-import fal_client  # ✅ Official FAL SDK
 
-# ======================
-# 🔑 Load Environment Variables
-# ======================
+# Load .env only for local development
 load_dotenv()
 
-# Get API keys (Streamlit Secrets first, fallback to .env)
+# Get API keys
 google_api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
-fal_api_key = st.secrets.get("FAL_API_KEY", os.getenv("FAL_API_KEY"))
+hf_api_key = st.secrets.get("HF_API_KEY", os.getenv("HF_API_KEY"))
 
 if not google_api_key:
     st.error("❌ GOOGLE_API_KEY not found! Please set it in .env (local) or Streamlit Secrets (cloud).")
     st.stop()
 
-if not fal_api_key:
-    st.warning("⚠️ FAL_API_KEY not found. Image generation will not work.")
-else:
-    # ✅ Configure fal-client with API key
-    os.environ["FAL_KEY"] = fal_api_key
+if not hf_api_key:
+    st.error("❌ HF_API_KEY not found! Please set it in .env (local) or Streamlit Secrets (cloud).")
+    st.stop()
 
-# ======================
-# 🎨 App Title
-# ======================
-st.title("⚡ Task Classifier with Gemini + FAL AI Images")
+st.title("⚡ Task Classifier with Gemini + Hugging Face Images")
 
-# ======================
-# 🚀 Cache LLM Initialization
-# ======================
+# ✅ Cache LLM initialization
 @st.cache_resource
 def load_llm():
     return ChatGoogleGenerativeAI(
@@ -41,24 +32,18 @@ def load_llm():
 
 llm = load_llm()
 
-# ======================
-# 💬 Session-state Conversation
-# ======================
+# ✅ Session-state persistent conversation history
 if "conversation" not in st.session_state:
     st.session_state.conversation = []
 
-# ======================
-# 🧠 Rule-Based Task Classifier
-# ======================
+# 🚀 Smarter Rule-Based Classifier
 def classify_query(query: str) -> str:
     q = query.lower()
     if any(word in q for word in ["draw", "image", "picture", "diagram", "photo", "generate image"]):
         return "Image Task"
     return "Text Task"
 
-# ======================
-# 📝 Prompt Composer
-# ======================
+# Compose prompt with conversation history
 def compose_prompt(conversation, current_query):
     prompt_text = ""
     for user_q, assistant_a in conversation:
@@ -66,9 +51,7 @@ def compose_prompt(conversation, current_query):
     prompt_text += f"User: {current_query}\nAssistant:"
     return prompt_text
 
-# ======================
-# 📖 Handlers
-# ======================
+# Handler for text tasks
 def handle_text_task(conversation, query: str):
     lower_q = query.lower()
     if any(phrase in lower_q for phrase in [
@@ -76,35 +59,31 @@ def handle_text_task(conversation, query: str):
         "who is the developer", "who is the creator"
     ]):
         return "This agent was built by Sounak Sarkar."
-
     prompt = compose_prompt(conversation, query)
     response = llm.invoke(prompt)
     return getattr(response, 'content', str(response))
 
-def handle_image_task(query: str):
-    if not fal_api_key:
-        return "❌ FAL API key not set. Please configure it to enable image generation."
+# Handler for image tasks using Hugging Face
+def handle_image_task(prompt: str):
+    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2"
+    headers = {"Authorization": f"Bearer {hf_api_key}"}
 
     try:
-        with st.spinner("🎨 Generating image with FAL AI..."):
-            result = fal_client.subscribe(
-                "fal-ai/flux-pro",  # 🔥 You can switch to "fal-ai/stable-diffusion-xl"
-                arguments={"prompt": query}
-            )
+        response = requests.post(api_url, headers=headers, json={"inputs": prompt})
+        if response.status_code != 200:
+            return f"⚠️ Image generation failed: {response.text}"
 
-        if "images" in result and len(result["images"]) > 0:
-            image_url = result["images"][0]["url"]
-            st.image(image_url, caption=f"Generated for: {query}")
-            return "✅ Image generated successfully!"
-        else:
-            return "⚠️ No image returned. Try another prompt."
+        # Save image locally
+        img_path = "generated.png"
+        with open(img_path, "wb") as f:
+            f.write(response.content)
 
+        st.image(img_path, caption="Generated Image")
+        return "✅ Image generated successfully!"
     except Exception as e:
-        return f"⚠️ Image generation failed: {str(e)}"
+        return f"⚠️ Error: {e}"
 
-def handle_other_task(query: str):
-    return "⚠️ Sorry, I don’t know how to handle this task yet."
-
+# Route tasks
 def route_task(conversation, query: str):
     category = classify_query(query)
     if category == "Text Task":
@@ -112,12 +91,10 @@ def route_task(conversation, query: str):
     elif category == "Image Task":
         result = handle_image_task(query)
     else:
-        result = handle_other_task(query)
+        result = "⚠️ Sorry, I don’t know how to handle this task yet."
     return category, result
 
-# ======================
-# 🎛️ Streamlit UI
-# ======================
+# Streamlit UI
 query = st.text_input("Enter your request:", key="input_query")
 
 col1, col2 = st.columns([1, 3])
