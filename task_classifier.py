@@ -13,16 +13,17 @@ if not google_api_key:
     st.error("❌ GOOGLE_API_KEY not found! Please set it in .env (local) or Streamlit Secrets (cloud).")
     st.stop()
 
-# Initialize Gemini LLM
+# Initialize Gemini LLM (⚡ streaming mode)
 llm = ChatGoogleGenerativeAI(
     model="gemini-1.5-flash",
     temperature=0,
-    google_api_key=google_api_key
+    google_api_key=google_api_key,
+    streaming=True
 )
 
 # Streamlit App
-st.set_page_config(page_title="⚡ Text Task Classifier", page_icon="📝", layout="centered")
-st.title("⚡ Text Task Classifier & Gemini Chat")
+st.set_page_config(page_title="⚡ Fast Text Task Classifier", page_icon="⚡", layout="centered")
+st.title("⚡ Fast Text Task Classifier & Gemini Chat")
 
 # Conversation state
 if "conversation" not in st.session_state:
@@ -36,7 +37,7 @@ def compose_prompt(conversation, current_query):
     prompt_text += f"User: {current_query}\nAssistant:"
     return prompt_text
 
-# Handle text queries
+# Handle text queries (⚡ streaming output)
 def handle_text_task(conversation, query: str):
     lower_q = query.lower()
     if any(phrase in lower_q for phrase in [
@@ -44,9 +45,18 @@ def handle_text_task(conversation, query: str):
         "who is the developer", "who is the creator"
     ]):
         return "This agent was built by **Sounak Sarkar**."
+
     prompt = compose_prompt(conversation, query)
-    response = llm.invoke(prompt)
-    return getattr(response, 'content', str(response))
+
+    response_placeholder = st.empty()
+    final_response = ""
+
+    # Stream chunks as they come
+    for chunk in llm.stream(prompt):
+        final_response += chunk.content or ""
+        response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
+    return final_response
 
 # Streamlit UI
 query = st.text_input("💬 Enter your request:", key="input_query")
@@ -63,7 +73,6 @@ if clear_clicked:
 if process_clicked and query:
     ans = handle_text_task(st.session_state.conversation, query)
     st.session_state.conversation.append((query, ans))
-    st.markdown(f"**Answer:**\n\n{ans}")
 
 # Show history
 if st.session_state.conversation:
