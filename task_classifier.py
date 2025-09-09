@@ -19,6 +19,9 @@ if not google_api_key:
 
 if not fal_api_key:
     st.warning("⚠️ FAL_API_KEY not found. Image generation will not work.")
+else:
+    # ✅ Configure fal-client with API key
+    os.environ["FAL_KEY"] = fal_api_key
 
 # ======================
 # 🎨 App Title
@@ -85,9 +88,8 @@ def handle_image_task(query: str):
     try:
         with st.spinner("🎨 Generating image with FAL AI..."):
             result = fal_client.subscribe(
-                "fal-ai/flux-pro",  # 🔥 You can switch to "fal-ai/stable-diffusion-xl" if you prefer
-                arguments={"prompt": query},
-                request_headers={"Authorization": f"Key {fal_api_key}"}
+                "fal-ai/flux-pro",  # 🔥 You can switch to "fal-ai/stable-diffusion-xl"
+                arguments={"prompt": query}
             )
 
         if "images" in result and len(result["images"]) > 0:
