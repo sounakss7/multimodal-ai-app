@@ -33,19 +33,24 @@ def handle_text_task(task):
     response = llm.predict(task)
     return response
 
-# Function: handle image tasks with Hugging Face
+# Function: handle image tasks with Hugging Face (Stable Diffusion 2-1)
 def handle_image_task(prompt: str):
     if not hf_api_key:
         return "⚠️ Hugging Face API key missing. Please add it to use image generation."
-    api_url = "https://api-inference.huggingface.co/models/prompthero/openjourney"
+    # Use supported, public model
+    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
     try:
         response = requests.post(api_url, headers=headers, json={"inputs": prompt})
-        content_type = response.headers.get("content-type")
-        if content_type == "application/json":
-            error_msg = response.json()
-            return f"⚠️ Hugging Face error: {error_msg.get('error', error_msg)}"
-        # Try decoding image bytes
+        if response.status_code != 200:
+            return f"⚠️ API error {response.status_code}: {response.text}"
+        content_type = response.headers.get("content-type", "")
+        if "application/json" in content_type:
+            try:
+                error_msg = response.json()
+                return f"⚠️ Hugging Face error: {error_msg.get('error', error_msg)}"
+            except Exception:
+                return f"⚠️ Hugging Face returned JSON error: {response.text}"
         try:
             image = Image.open(io.BytesIO(response.content))
             st.image(image, caption=f"Generated: {prompt}")
