@@ -67,22 +67,26 @@ def handle_image_task(prompt: str):
     if not hf_api_key:
         return "⚠️ Hugging Face API key missing. Please add it to use image generation."
 
-    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1"
+    api_url = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
 
     try:
         response = requests.post(api_url, headers=headers, json={"inputs": prompt})
-        if response.status_code != 200:
-            return f"⚠️ Image generation failed: {response.text}"
+        
+        # Sometimes HF returns JSON with error instead of image
+        if response.headers.get("content-type") == "application/json":
+            return f"⚠️ Image generation failed: {response.json()}"
 
+        # Save image
         img_path = "generated.png"
         with open(img_path, "wb") as f:
             f.write(response.content)
 
-        st.image(img_path, caption="Generated Image")
+        st.image(img_path, caption=f"Generated: {prompt}")
         return "✅ Image generated successfully!"
     except Exception as e:
         return f"⚠️ Error: {e}"
+
 
 def handle_other_task(query: str):
     return "⚠️ Sorry, I don’t know how to handle this task yet."
@@ -121,3 +125,4 @@ if st.session_state.conversation:
         st.markdown(f"**User:** {user_q}")
         st.markdown(f"**Assistant:** {assistant_a}")
         st.markdown("---")
+
