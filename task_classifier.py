@@ -2,98 +2,73 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import PromptTemplate
-import requests
-from PIL import Image
-import io
 
 # Load environment variables
 load_dotenv()
 
-# Get API keys
+# Get Google Gemini API key
 google_api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
-hf_api_key = st.secrets.get("HF_API_KEY", os.getenv("HF_API_KEY"))
 
-# Initialize Gemini model
-if google_api_key:
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", google_api_key=google_api_key)
-else:
-    llm = None
+if not google_api_key:
+    st.error("❌ GOOGLE_API_KEY not found! Please set it in .env (local) or Streamlit Secrets (cloud).")
+    st.stop()
 
-# Prompt template to classify tasks
-task_classifier_prompt = PromptTemplate(
-    input_variables=["task"],
-    template="Classify the following task as either a 'Text Task' or 'Image Task': {task}"
+# Initialize Gemini LLM
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    temperature=0,
+    google_api_key=google_api_key
 )
 
-# Function: handle text tasks with Gemini
-def handle_text_task(task):
-    if not llm:
-        return "⚠️ Google Gemini API key missing."
-    response = llm.predict(task)
-    return response
+# Streamlit App
+st.set_page_config(page_title="⚡ Text Task Classifier", page_icon="📝", layout="centered")
+st.title("⚡ Text Task Classifier & Gemini Chat")
 
-# Function: handle image tasks with Hugging Face (Stable Diffusion 2-1)
-def handle_image_task(prompt: str):
-    if not hf_api_key:
-        return "⚠️ Hugging Face API key missing. Please add it to use image generation."
-    api_url = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
-    headers = {"Authorization": f"Bearer {hf_api_key}"}
-    payload = {
-        "inputs": prompt,
-        "options": {"wait_for_model": True}
-    }
-    try:
-        response = requests.post(api_url, headers=headers, json=payload)
-        if response.status_code != 200:
-            return f"⚠️ API error {response.status_code}: {response.text}"
-        content_type = response.headers.get("content-type", "")
-        if "application/json" in content_type:
-            try:
-                error_msg = response.json()
-                return f"⚠️ Hugging Face error: {error_msg.get('error', error_msg)}"
-            except Exception:
-                return f"⚠️ Hugging Face returned JSON error: {response.text}"
-        try:
-            image = Image.open(io.BytesIO(response.content))
-            st.image(image, caption=f"Generated: {prompt}")
-            return "✅ Image generated successfully!"
-        except Exception as img_err:
-            return f"⚠️ Error decoding image: {img_err}.\nRaw response headers: {response.headers}\nRaw response bytes: {response.content[:100]}"
-    except Exception as e:
-        return f"⚠️ Error: {e}"
+# Conversation state
+if "conversation" not in st.session_state:
+    st.session_state.conversation = []
 
+# Compose prompt with conversation history
+def compose_prompt(conversation, current_query):
+    prompt_text = ""
+    for user_q, assistant_a in conversation:
+        prompt_text += f"User: {user_q}\nAssistant: {assistant_a}\n"
+    prompt_text += f"User: {current_query}\nAssistant:"
+    return prompt_text
+
+# Handle text queries
+def handle_text_task(conversation, query: str):
+    lower_q = query.lower()
+    if any(phrase in lower_q for phrase in [
+        "who built this agent", "who created this agent", "who made this agent",
+        "who is the developer", "who is the creator"
+    ]):
+        return "This agent was built by **Sounak Sarkar**."
+    prompt = compose_prompt(conversation, query)
+    response = llm.invoke(prompt)
+    return getattr(response, 'content', str(response))
 
 # Streamlit UI
-st.set_page_config(page_title="Task Classifier", page_icon="⚡", layout="centered")
-st.title("⚡ Task Classifier with Gemini + Hugging Face Images")
+query = st.text_input("💬 Enter your request:", key="input_query")
 
-user_input = st.text_input("Enter your request:")
+col1, col2 = st.columns([1, 3])
+with col1:
+    process_clicked = st.button("Process")
+with col2:
+    clear_clicked = st.button("Clear Conversation")
 
-if "history" not in st.session_state:
-    st.session_state.history = []
+if clear_clicked:
+    st.session_state.conversation = []  # reset history
 
-if st.button("Process"):
-    if user_input:
-        # Classify the task
-        classification_prompt = task_classifier_prompt.format(task=user_input)
-        task_type = llm.predict(classification_prompt) if llm else "Text Task"
-        # Decide based on task type
-        if "image" in task_type.lower():
-            result = handle_image_task(user_input)
-        else:
-            result = handle_text_task(user_input)
-        st.session_state.history.append((user_input, result))
-        st.subheader("Task Type:")
-        st.write(task_type)
-        st.subheader("Answer:")
-        st.write(result)
+if process_clicked and query:
+    ans = handle_text_task(st.session_state.conversation, query)
+    st.session_state.conversation.append((query, ans))
+    st.markdown(f"**Answer:**\n\n{ans}")
 
-if st.button("Clear Conversation"):
-    st.session_state.history = []
-
-st.subheader("Conversation History ↔")
-for i, (q, a) in enumerate(st.session_state.history, 1):
-    st.write(f"**User:** {q}")
-    st.write(f"**Assistant:** {a}")
-
+# Show history
+if st.session_state.conversation:
+    st.markdown("### 🗂️ Conversation History")
+    for user_q, assistant_a in st.session_state.conversation:
+        st.markdown(f"**User:** {user_q}")
+        st.markdown(f"**Assistant:** {assistant_a}")
+        st.markdown("---")
