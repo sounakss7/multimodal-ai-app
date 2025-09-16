@@ -103,42 +103,42 @@ with tab1:
 # =====================# =====================
 # IMAGE GENERATOR TAB (with auto-enhancement + styles)
 # =====================
+# =====================
+# IMAGE GENERATOR TAB (Gemini-enhanced + Faster Caching)
+# =====================
 with tab2:
     st.subheader("🎨 Pollinations.AI Free Image Generator")
 
     img_prompt = st.text_input("📝 Enter your image prompt:", key="img_prompt")
 
-    # Style buttons
+    # Style options
     styles = ["Realistic", "Cartoon", "Fantasy", "Minimalist"]
     selected_style = st.radio("🎨 Choose a style:", styles, horizontal=True)
 
-    def enhance_prompt(user_prompt, style):
-        # If user prompt is very short, expand it
-        if len(user_prompt.split()) < 3:
-            if style == "Realistic":
-                return f"A realistic high quality image of {user_prompt}, with cinematic lighting and fine details"
-            elif style == "Cartoon":
-                return f"A cartoon illustration of {user_prompt}, vibrant colors, vector art style"
-            elif style == "Fantasy":
-                return f"A fantasy art style image of {user_prompt}, magical atmosphere, detailed background"
-            elif style == "Minimalist":
-                return f"A minimalist flat design of {user_prompt}, simple clean style, soft colors"
-        # If user already gave a detailed prompt, just append style
-        return f"{user_prompt}, in {style} style"
+    # Function: Ask Gemini to expand + improve the prompt
+    def smart_enhance_prompt(user_prompt, style):
+        quick_prompt = f"Rewrite this short prompt into a detailed {style} image generation description: {user_prompt}"
+        response = llm.invoke(quick_prompt)  # using Gemini directly
+        return response.content.strip()
+
+    # Function: cache Pollinations image fetch for speed
+    @st.cache_data(show_spinner=False)
+    def fetch_image(final_prompt, token):
+        url = f"https://image.pollinations.ai/prompt/{final_prompt}?token={token}"
+        return requests.get(url).content
 
     if st.button("Generate Image"):
         if not img_prompt:
             st.warning("⚠️ Please enter a prompt before generating an image.")
         else:
-            # Auto-enhance user prompt
-            final_prompt = enhance_prompt(img_prompt, selected_style)
-
             with st.spinner(f"🎨 Generating {selected_style} image..."):
-                url = f"https://image.pollinations.ai/prompt/{final_prompt}?token={pollinations_token}"
-                response = requests.get(url)
+                # Auto-enhance the prompt using Gemini
+                final_prompt = smart_enhance_prompt(img_prompt, selected_style)
 
-                if response.status_code == 200:
-                    img = Image.open(BytesIO(response.content))
+                # Fetch image (cached if repeated)
+                try:
+                    img_bytes = fetch_image(final_prompt, pollinations_token)
+                    img = Image.open(BytesIO(img_bytes))
                     st.image(img, caption=final_prompt)
 
                     buf = BytesIO()
@@ -149,8 +149,8 @@ with tab2:
                         file_name="pollinations_image.png",
                         mime="image/png"
                     )
-                else:
-                    st.error("❌ Failed to generate image. Please try again.")
+                except Exception as e:
+                    st.error(f"❌ Failed to generate image: {e}")
 
 
 # =====================
@@ -185,5 +185,6 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
 
 
