@@ -100,23 +100,46 @@ with tab1:
 
 # =====================
 # IMAGE GENERATOR TAB
+# =====================# =====================
+# IMAGE GENERATOR TAB (with auto-enhancement + styles)
 # =====================
 with tab2:
     st.subheader("🎨 Pollinations.AI Free Image Generator")
 
     img_prompt = st.text_input("📝 Enter your image prompt:", key="img_prompt")
 
+    # Style buttons
+    styles = ["Realistic", "Cartoon", "Fantasy", "Minimalist"]
+    selected_style = st.radio("🎨 Choose a style:", styles, horizontal=True)
+
+    def enhance_prompt(user_prompt, style):
+        # If user prompt is very short, expand it
+        if len(user_prompt.split()) < 3:
+            if style == "Realistic":
+                return f"A realistic high quality image of {user_prompt}, with cinematic lighting and fine details"
+            elif style == "Cartoon":
+                return f"A cartoon illustration of {user_prompt}, vibrant colors, vector art style"
+            elif style == "Fantasy":
+                return f"A fantasy art style image of {user_prompt}, magical atmosphere, detailed background"
+            elif style == "Minimalist":
+                return f"A minimalist flat design of {user_prompt}, simple clean style, soft colors"
+        # If user already gave a detailed prompt, just append style
+        return f"{user_prompt}, in {style} style"
+
     if st.button("Generate Image"):
         if not img_prompt:
             st.warning("⚠️ Please enter a prompt before generating an image.")
         else:
-            with st.spinner("🎨 Generating image..."):
-                url = f"https://image.pollinations.ai/prompt/{img_prompt}?token={pollinations_token}"
+            # Auto-enhance user prompt
+            final_prompt = enhance_prompt(img_prompt, selected_style)
+
+            with st.spinner(f"🎨 Generating {selected_style} image..."):
+                url = f"https://image.pollinations.ai/prompt/{final_prompt}?token={pollinations_token}"
                 response = requests.get(url)
 
                 if response.status_code == 200:
                     img = Image.open(BytesIO(response.content))
-                    st.image(img, caption=img_prompt)
+                    st.image(img, caption=final_prompt)
 
                     buf = BytesIO()
                     img.save(buf, format="PNG")
@@ -128,6 +151,7 @@ with tab2:
                     )
                 else:
                     st.error("❌ Failed to generate image. Please try again.")
+
 
 # =====================
 # IMAGE Q&A TAB (FIXED with base64 encoding)
@@ -161,4 +185,5 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
 
