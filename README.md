@@ -44,23 +44,9 @@ This app supports:
 
 ---
 
-## ⚙️ Installation
 
-1. **Clone the repository**
-```bash
-git clone https://github.com/your-username/multimodal-ai-app.git
-cd multimodal-ai-app
 
-### 2. Create and activate a virtual environment
 
-```bash
-# Create a virtual environment
-python -m venv venv
 
-# Activate on Mac/Linux
-source venv/bin/activate
-
-# Activate on Windows (PowerShell or CMD)
-venv\Scripts\activate
 
 
