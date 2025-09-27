@@ -7,6 +7,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage
+import urllib.parse # Required for the URL encoding fix
 
 # =====================
 # Load environment variables
@@ -26,9 +27,8 @@ if not pollinations_token:
 # =====================
 # Initialize Gemini LLM (⚡ streaming mode)
 # =====================
-# This is the corrected code
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-pro-latest",  # <-- FIXED
+    model="gemini-1.5-pro-latest",  # FIXED: Use a widely available and powerful model
     temperature=0,
     google_api_key=google_api_key,
     streaming=True
@@ -71,7 +71,8 @@ with tab1:
         response_placeholder = st.empty()
         final_response = ""
 
-        for chunk in llm.stream(prompt):
+        # FIXED: Wrap the prompt in HumanMessage for consistent API calls
+        for chunk in llm.stream([HumanMessage(content=prompt)]):
             final_response += chunk.content or ""
             response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
 
@@ -101,31 +102,25 @@ with tab1:
 
 # =====================
 # IMAGE GENERATOR TAB
-# =====================# =====================
-# IMAGE GENERATOR TAB (with auto-enhancement + styles)
-# =====================
-# =====================
-# IMAGE GENERATOR TAB (Gemini-enhanced + Faster Caching)
 # =====================
 with tab2:
     st.subheader("🎨 Pollinations.AI Free Image Generator")
 
     img_prompt = st.text_input("📝 Enter your image prompt:", key="img_prompt")
 
-    # Style options
-    styles = ["Realistic", "Cartoon", "Fantasy", "Minimalist"]
+    styles = ["Realistic", "Cartoon", "Fantasy", "Minimalist", "Anime"]
     selected_style = st.radio("🎨 Choose a style:", styles, horizontal=True)
 
-    # Function: Ask Gemini to expand + improve the prompt
     def smart_enhance_prompt(user_prompt, style):
-        quick_prompt = f"Rewrite this short prompt into a detailed {style} image generation description: {user_prompt}"
-        response = llm.invoke(quick_prompt)  # using Gemini directly
+        quick_prompt = f"Rewrite this short prompt into a detailed, single-paragraph {style} style image generation description suitable for an AI image generator: {user_prompt}"
+        response = llm.invoke(quick_prompt)
         return response.content.strip()
 
-    # Function: cache Pollinations image fetch for speed
     @st.cache_data(show_spinner=False)
     def fetch_image(final_prompt, token):
-        url = f"https://image.pollinations.ai/prompt/{final_prompt}?token={token}"
+        # FIXED: URL-encode the prompt to handle spaces and special characters
+        encoded_prompt = urllib.parse.quote(final_prompt)
+        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?token={token}"
         return requests.get(url).content
 
     if st.button("Generate Image"):
@@ -133,10 +128,9 @@ with tab2:
             st.warning("⚠️ Please enter a prompt before generating an image.")
         else:
             with st.spinner(f"🎨 Generating {selected_style} image..."):
-                # Auto-enhance the prompt using Gemini
                 final_prompt = smart_enhance_prompt(img_prompt, selected_style)
+                st.info(f"Enhanced Prompt: {final_prompt}")
 
-                # Fetch image (cached if repeated)
                 try:
                     img_bytes = fetch_image(final_prompt, pollinations_token)
                     img = Image.open(BytesIO(img_bytes))
@@ -147,15 +141,15 @@ with tab2:
                     st.download_button(
                         label="📥 Download Image",
                         data=buf.getvalue(),
-                        file_name="pollinations_image.png",
+                        file_name="generated_image.png",
                         mime="image/png"
                     )
                 except Exception as e:
-                    st.error(f"❌ Failed to generate image: {e}")
+                    st.error(f"❌ Failed to generate image. The API may be busy. Please try again. Error: {e}")
 
 
 # =====================
-# IMAGE Q&A TAB (FIXED with base64 encoding)
+# IMAGE Q&A TAB
 # =====================
 with tab3:
     st.subheader("🖼️ Upload an Image & Ask Gemini")
@@ -170,10 +164,12 @@ with tab3:
             st.warning("⚠️ Please enter a question about the image.")
         else:
             with st.spinner("🔎 Analyzing image..."):
-                # ✅ Proper base64 encoding
                 img_bytes = uploaded_img.read()
                 img_base64 = base64.b64encode(img_bytes).decode("utf-8")
-                data_url = f"data:image/png;base64,{img_base64}"
+                
+                # FIXED: Use the actual MIME type from the uploaded file
+                mime_type = uploaded_img.type
+                data_url = f"data:{mime_type};base64,{img_base64}"
 
                 content = [
                     {"type": "text", "text": qna_prompt},
@@ -185,7 +181,4 @@ with tab3:
 
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
-                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")  
-
-
-
+                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
