@@ -12,8 +12,9 @@ from langchain.schema import HumanMessage
 # Load environment variables
 # =====================
 load_dotenv()
-google_api_key = os.getenv("GOOGLE_API_KEY")
-pollinations_token = os.getenv("POLLINATIONS_TOKEN")
+google_api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+pollinations_token = st.secrets.get("POLLINATIONS_TOKEN", os.getenv("POLLINATIONS_TOKEN"))
+
 if not google_api_key:
     st.error("❌ GOOGLE_API_KEY not found! Please set it in .env or Streamlit Secrets.")
     st.stop()
@@ -26,7 +27,7 @@ if not pollinations_token:
 # Initialize Gemini LLM (⚡ streaming mode)
 # =====================
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",  # Make sure it says "pro-latest"
+    model="gemini-2.5-flash",  # pro supports multimodality (text + image)
     temperature=0,
     google_api_key=google_api_key,
     streaming=True
@@ -183,4 +184,6 @@ with tab3:
 
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
-                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")  
+
+
