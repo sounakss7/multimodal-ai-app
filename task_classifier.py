@@ -5,7 +5,7 @@ from io import BytesIO
 from PIL import Image
 import streamlit as st
 from dotenv import load_dotenv
-import google.generativeai as genai   # ✅ Use Google SDK instead of LangChain
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage
 
 # =====================
@@ -24,22 +24,14 @@ if not pollinations_token:
     st.stop()
 
 # =====================
-# Initialize Gemini Flash Model
+# Initialize Gemini LLM (⚡ streaming mode)
 # =====================
-genai.configure(api_key=google_api_key)
-flash_model = genai.GenerativeModel("gemini-1.5-flash")  # ✅ official supported model
-
-def flash_stream(prompt):
-    """Streaming response from Gemini Flash"""
-    response = flash_model.generate_content(prompt, stream=True)
-    for chunk in response:
-        if chunk.text:
-            yield chunk.text
-
-def flash_invoke(prompt):
-    """Single response (non-streaming) from Gemini Flash"""
-    response = flash_model.generate_content(prompt)
-    return response.text
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",  # pro supports multimodality (text + image)
+    temperature=0,
+    google_api_key=google_api_key,
+    streaming=True
+)
 
 # =====================
 # Streamlit App Layout
@@ -78,8 +70,8 @@ with tab1:
         response_placeholder = st.empty()
         final_response = ""
 
-        for chunk in flash_stream(prompt):  # ✅ use flash_stream
-            final_response += chunk
+        for chunk in llm.stream(prompt):
+            final_response += chunk.content or ""
             response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
 
         return final_response
@@ -108,6 +100,11 @@ with tab1:
 
 # =====================
 # IMAGE GENERATOR TAB
+# =====================# =====================
+# IMAGE GENERATOR TAB (with auto-enhancement + styles)
+# =====================
+# =====================
+# IMAGE GENERATOR TAB (Gemini-enhanced + Faster Caching)
 # =====================
 with tab2:
     st.subheader("🎨 Pollinations.AI Free Image Generator")
@@ -118,11 +115,13 @@ with tab2:
     styles = ["Realistic", "Cartoon", "Fantasy", "Minimalist"]
     selected_style = st.radio("🎨 Choose a style:", styles, horizontal=True)
 
-    # Function: Ask Gemini Flash to expand + improve the prompt
+    # Function: Ask Gemini to expand + improve the prompt
     def smart_enhance_prompt(user_prompt, style):
         quick_prompt = f"Rewrite this short prompt into a detailed {style} image generation description: {user_prompt}"
-        return flash_invoke(quick_prompt).strip()
+        response = llm.invoke(quick_prompt)  # using Gemini directly
+        return response.content.strip()
 
+    # Function: cache Pollinations image fetch for speed
     @st.cache_data(show_spinner=False)
     def fetch_image(final_prompt, token):
         url = f"https://image.pollinations.ai/prompt/{final_prompt}?token={token}"
@@ -133,8 +132,11 @@ with tab2:
             st.warning("⚠️ Please enter a prompt before generating an image.")
         else:
             with st.spinner(f"🎨 Generating {selected_style} image..."):
+                # Auto-enhance the prompt using Gemini
+                final_prompt = smart_enhance_prompt(img_prompt, selected_style)
+
+                # Fetch image (cached if repeated)
                 try:
-                    final_prompt = smart_enhance_prompt(img_prompt, selected_style)
                     img_bytes = fetch_image(final_prompt, pollinations_token)
                     img = Image.open(BytesIO(img_bytes))
                     st.image(img, caption=final_prompt)
@@ -150,8 +152,9 @@ with tab2:
                 except Exception as e:
                     st.error(f"❌ Failed to generate image: {e}")
 
+
 # =====================
-# IMAGE Q&A TAB
+# IMAGE Q&A TAB (FIXED with base64 encoding)
 # =====================
 with tab3:
     st.subheader("🖼️ Upload an Image & Ask Gemini")
@@ -166,11 +169,11 @@ with tab3:
             st.warning("⚠️ Please enter a question about the image.")
         else:
             with st.spinner("🔎 Analyzing image..."):
+                # ✅ Proper base64 encoding
                 img_bytes = uploaded_img.read()
                 img_base64 = base64.b64encode(img_bytes).decode("utf-8")
                 data_url = f"data:image/png;base64,{img_base64}"
 
-                # Pass both image and question to Gemini Flash
                 content = [
                     {"type": "text", "text": qna_prompt},
                     {"type": "image_url", "image_url": {"url": data_url}}
@@ -179,8 +182,8 @@ with tab3:
                 response_placeholder = st.empty()
                 final_response = ""
 
-                response = flash_model.generate_content(content, stream=True)  # ✅ Flash supports multimodal
-                for chunk in response:
-                    if chunk.text:
-                        final_response += chunk.text
-                        response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+                for chunk in llm.stream([HumanMessage(content=content)]):
+                    final_response += chunk.content or ""
+                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")  
+
+
