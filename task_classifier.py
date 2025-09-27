@@ -26,8 +26,9 @@ if not pollinations_token:
 # =====================
 # Initialize Gemini LLM (⚡ streaming mode)
 # =====================
+# This is the corrected code
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",  # pro supports multimodality (text + image)
+    model="gemini-1.5-pro-latest",  # <-- FIXED
     temperature=0,
     google_api_key=google_api_key,
     streaming=True
@@ -185,5 +186,6 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")  
+
 
 
