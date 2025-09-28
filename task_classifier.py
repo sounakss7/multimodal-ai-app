@@ -184,4 +184,5 @@ with tab3:
 
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
-                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")  .
+                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")  
+
