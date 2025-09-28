@@ -1,6 +1,9 @@
+
 streamlit
 python-dotenv
 langchain
 langchain-google-genai
 google-generativeai
 fal-client
+openai
+langchain-openai
