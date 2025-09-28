@@ -6,6 +6,7 @@ from PIL import Image
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage
 
 # =====================
@@ -13,10 +14,15 @@ from langchain.schema import HumanMessage
 # =====================
 load_dotenv()
 google_api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
+openai_api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 pollinations_token = st.secrets.get("POLLINATIONS_TOKEN", os.getenv("POLLINATIONS_TOKEN"))
 
 if not google_api_key:
     st.error("❌ GOOGLE_API_KEY not found! Please set it in .env or Streamlit Secrets.")
+    st.stop()
+
+if not openai_api_key:
+    st.error("❌ OPENAI_API_KEY not found! Please set it in .env or Streamlit Secrets.")
     st.stop()
 
 if not pollinations_token:
@@ -24,55 +30,60 @@ if not pollinations_token:
     st.stop()
 
 # =====================
-# Initialize Gemini LLM (⚡ streaming mode)
+# Initialize LLMs
 # =====================
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",  # pro supports multimodality (text + image)
+gemini_llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
     temperature=0,
     google_api_key=google_api_key,
     streaming=True
 )
 
-# =====================
-# Streamlit App Layout
-# =====================
-st.set_page_config(page_title="🤖 Multimodal AI App", page_icon="🤖", layout="centered")
-st.title("🤖 Multimodal AI App (Text + Image Generator + Image Q&A)")
+openai_llm = ChatOpenAI(
+    model="gpt-5-nano",  # ⚡ You can switch between gpt-4o, gpt-4o-mini, gpt-3.5
+    temperature=0,
+    api_key=openai_api_key,
+    streaming=True
+)
 
-tab1, tab2, tab3 = st.tabs(["💬 Text Chat", "🎨 Image Generator", "🖼️ Image Q&A"])
+# =====================
+# Routing logic for LLM selection
+# =====================
+def choose_llm(query: str):
+    q = query.lower()
+    if "image" in q or "analyze" in q:
+        return gemini_llm, "Gemini", "Gemini is better at multimodal reasoning (text + images).", 0.92
+    elif "summarize" in q or "explain" in q:
+        return openai_llm, "OpenAI gpt-5-nano", "GPT is excellent for summarization and structured text tasks.", 0.95
+    elif "creative" in q or "story" in q:
+        return openai_llm, "OpenAI gpt-5-nano", "GPT is strong for creative writing tasks.", 0.93
+    else:
+        return gemini_llm, "Gemini", "Gemini flash is faster for general-purpose queries.", 0.90
 
 # =====================
 # TEXT CHAT TAB
 # =====================
 with tab1:
-    st.subheader("⚡ Fast Text Task Classifier & Gemini Chat")
+    st.subheader("⚡ Dynamic LLM Router (Gemini + OpenAI)")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = []
 
-    def compose_prompt(conversation, current_query):
-        prompt_text = ""
-        for user_q, assistant_a in conversation:
-            prompt_text += f"User: {user_q}\nAssistant: {assistant_a}\n"
-        prompt_text += f"User: {current_query}\nAssistant:"
-        return prompt_text
-
     def handle_text_task(conversation, query: str):
-        lower_q = query.lower()
-        if any(phrase in lower_q for phrase in [
-            "who built this agent", "who created this agent", "who made this agent",
-            "who is the developer", "who is the creator"
-        ]):
-            return "This agent was built by **Sounak Sarkar**."
+        # Choose which LLM to use
+        llm, name, reason, accuracy = choose_llm(query)
 
-        prompt = compose_prompt(conversation, query)
-
+        prompt = f"User: {query}\nAssistant:"
         response_placeholder = st.empty()
         final_response = ""
 
         for chunk in llm.stream(prompt):
             final_response += chunk.content or ""
             response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
+        # Append meta info about LLM choice
+        meta_info = f"\n\n---\n**ℹ️ Model Used:** {name}\n**Reason:** {reason}\n**Estimated Accuracy:** {accuracy*100:.1f}%"
+        final_response += meta_info
 
         return final_response
 
@@ -95,7 +106,7 @@ with tab1:
         st.markdown("### 🗂️ Conversation History")
         for user_q, assistant_a in st.session_state.conversation:
             st.markdown(f"**User:** {user_q}")
-            st.code(assistant_a, language="markdown")
+            st.markdown(assistant_a)
             st.markdown("---")
 
 # =====================
@@ -185,5 +196,6 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")  
+
 
 
