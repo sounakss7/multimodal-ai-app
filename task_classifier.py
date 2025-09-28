@@ -5,10 +5,7 @@ from io import BytesIO
 from PIL import Image
 import streamlit as st
 from dotenv import load_dotenv
-
-# LangChain Imports
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage
 
 # =====================
@@ -17,50 +14,24 @@ from langchain.schema import HumanMessage
 load_dotenv()
 google_api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
 pollinations_token = st.secrets.get("POLLINATIONS_TOKEN", os.getenv("POLLINATIONS_TOKEN"))
-openai_api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
 
 if not google_api_key:
-    st.error("❌ GOOGLE_API_KEY not found!")
+    st.error("❌ GOOGLE_API_KEY not found! Please set it in .env or Streamlit Secrets.")
     st.stop()
 
 if not pollinations_token:
-    st.error("❌ POLLINATIONS_TOKEN not found!")
-    st.stop()
-
-if not openai_api_key:
-    st.error("❌ OPENAI_API_KEY not found!")
+    st.error("❌ POLLINATIONS_TOKEN not found! Please set it in .env or Streamlit Secrets.")
     st.stop()
 
 # =====================
-# Initialize LLMs
+# Initialize Gemini LLM (⚡ streaming mode)
 # =====================
-gemini_llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",  # pro supports multimodality (text + image)
     temperature=0,
     google_api_key=google_api_key,
     streaming=True
 )
-
-openai_llm = ChatOpenAI(
-    model="gpt-5-nano",   # gpt-4.1-mini is free/nano-level in OpenAI
-    temperature=0,
-    api_key=openai_api_key,
-    streaming=True
-)
-
-# =====================
-# Router Function
-# =====================
-def route_task(query: str):
-    """Decide which LLM to use based on task type"""
-    q = query.lower()
-
-    if any(word in q for word in ["image", "picture", "photo", "draw", "generate an image"]):
-        return gemini_llm, "Gemini 2.5 Flash (better for vision + creativity)", 0.92
-    elif any(word in q for word in ["summarize", "explain", "analyze", "complex", "deep reasoning"]):
-        return openai_llm, "OpenAI GPT-5-nano (better for reasoning + analysis)", 0.95
-    else:
-        return gemini_llm, "Gemini 2.5 Flash (default for fast chat)", 0.90
 
 # =====================
 # Streamlit App Layout
@@ -74,7 +45,7 @@ tab1, tab2, tab3 = st.tabs(["💬 Text Chat", "🎨 Image Generator", "🖼️ I
 # TEXT CHAT TAB
 # =====================
 with tab1:
-    st.subheader("⚡ Smart Routed Chat (Gemini + OpenAI)")
+    st.subheader("⚡ Fast Text Task Classifier & Gemini Chat")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = []
@@ -94,7 +65,6 @@ with tab1:
         ]):
             return "This agent was built by **Sounak Sarkar**."
 
-        llm, reason, accuracy = route_task(query)
         prompt = compose_prompt(conversation, query)
 
         response_placeholder = st.empty()
@@ -104,8 +74,6 @@ with tab1:
             final_response += chunk.content or ""
             response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
 
-        # Append reasoning + accuracy score
-        final_response += f"\n\n---\n🤖 **Why this model?** {reason}\n📊 **Estimated Accuracy:** {accuracy*100:.1f}%"
         return final_response
 
     query = st.text_input("💬 Enter your request:", key="input_query")
@@ -132,20 +100,28 @@ with tab1:
 
 # =====================
 # IMAGE GENERATOR TAB
+# =====================# =====================
+# IMAGE GENERATOR TAB (with auto-enhancement + styles)
+# =====================
+# =====================
+# IMAGE GENERATOR TAB (Gemini-enhanced + Faster Caching)
 # =====================
 with tab2:
     st.subheader("🎨 Pollinations.AI Free Image Generator")
 
     img_prompt = st.text_input("📝 Enter your image prompt:", key="img_prompt")
 
+    # Style options
     styles = ["Realistic", "Cartoon", "Fantasy", "Minimalist"]
     selected_style = st.radio("🎨 Choose a style:", styles, horizontal=True)
 
+    # Function: Ask Gemini to expand + improve the prompt
     def smart_enhance_prompt(user_prompt, style):
         quick_prompt = f"Rewrite this short prompt into a detailed {style} image generation description: {user_prompt}"
-        response = gemini_llm.invoke(quick_prompt)
+        response = llm.invoke(quick_prompt)  # using Gemini directly
         return response.content.strip()
 
+    # Function: cache Pollinations image fetch for speed
     @st.cache_data(show_spinner=False)
     def fetch_image(final_prompt, token):
         url = f"https://image.pollinations.ai/prompt/{final_prompt}?token={token}"
@@ -156,7 +132,10 @@ with tab2:
             st.warning("⚠️ Please enter a prompt before generating an image.")
         else:
             with st.spinner(f"🎨 Generating {selected_style} image..."):
+                # Auto-enhance the prompt using Gemini
                 final_prompt = smart_enhance_prompt(img_prompt, selected_style)
+
+                # Fetch image (cached if repeated)
                 try:
                     img_bytes = fetch_image(final_prompt, pollinations_token)
                     img = Image.open(BytesIO(img_bytes))
@@ -173,8 +152,9 @@ with tab2:
                 except Exception as e:
                     st.error(f"❌ Failed to generate image: {e}")
 
+
 # =====================
-# IMAGE Q&A TAB
+# IMAGE Q&A TAB (FIXED with base64 encoding)
 # =====================
 with tab3:
     st.subheader("🖼️ Upload an Image & Ask Gemini")
@@ -189,6 +169,7 @@ with tab3:
             st.warning("⚠️ Please enter a question about the image.")
         else:
             with st.spinner("🔎 Analyzing image..."):
+                # ✅ Proper base64 encoding
                 img_bytes = uploaded_img.read()
                 img_base64 = base64.b64encode(img_bytes).decode("utf-8")
                 data_url = f"data:image/png;base64,{img_base64}"
@@ -201,6 +182,6 @@ with tab3:
                 response_placeholder = st.empty()
                 final_response = ""
 
-                for chunk in gemini_llm.stream([HumanMessage(content=content)]):
+                for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
-                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")  .
