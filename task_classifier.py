@@ -104,10 +104,26 @@ with tab1:
             )
 
             if response.status_code == 200:
-                text_result = response.json().get("prediction", "")
-                if text_result:
-                    st.success(f"🗣️ You said: {text_result}")
-                    query = text_result  # overwrite query with transcribed text
+                result_json = response.json()
+
+# Extract transcription safely
+if isinstance(result_json, dict) and "prediction" in result_json:
+    # sometimes dict format
+    text_result = result_json["prediction"]
+elif isinstance(result_json, list) and len(result_json) > 0:
+    # sometimes list format
+    text_result = result_json[0].get("transcription", "")
+else:
+    text_result = ""
+
+if text_result:
+    st.success(f"🗣️ You said: {text_result}")
+    query = text_result.strip()
+    ans = handle_text_task(st.session_state.conversation, query)
+    st.session_state.conversation.append((query, ans))
+else:
+    st.warning("⚠️ No valid speech detected. Try again.")
+
 
                     # 🔥 Directly send to Gemini
                     ans = handle_text_task(st.session_state.conversation, query)
@@ -213,3 +229,4 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
