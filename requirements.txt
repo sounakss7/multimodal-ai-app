@@ -7,3 +7,7 @@ google-generativeai
 fal-client
 openai
 langchain-openai
+pillow
+python-dotenv
+requests
+audio-recorder-streamlit
