@@ -83,45 +83,45 @@ with tab1:
         return final_response
 
     # =====================
-    # 🎙️ Voice Input + Text Input Section
+    # 🎙️ Voice + Text Input Section
     # =====================
-    # 🎙️ Voice Input + Text Input Section
-query = st.text_input("💬 Enter your request:", key="input_query")
+    query = st.text_input("💬 Enter your request:", key="input_query")
 
-# Record voice (audio_recorder creates mic button)
-st.write("🎙️ Speak your query below:")
-audio_bytes = audio_recorder(text="", recording_color="#FF4B4B", neutral_color="#4B9EFF")
+    # Record voice (mic button)
+    st.write("🎙️ Speak your query below:")
+    audio_bytes = audio_recorder(text="", recording_color="#FF4B4B", neutral_color="#4B9EFF")
 
-if audio_bytes:
-    st.audio(audio_bytes, format="audio/wav")
+    if audio_bytes:
+        st.audio(audio_bytes, format="audio/wav")
 
-    with st.spinner("🎧 Transcribing your voice via Gladia..."):
-        files = {'audio': ("voice.wav", audio_bytes, "audio/wav")}
-        headers = {"x-gladia-key": gladia_api_key}
-        response = requests.post(
-            "https://api.gladia.io/audio/text/audio-transcription/",
-            headers=headers,
-            files=files
-        )
+        with st.spinner("🎧 Transcribing your voice via Gladia..."):
+            files = {'audio': ("voice.wav", audio_bytes, "audio/wav")}
+            headers = {"x-gladia-key": gladia_api_key}
+            response = requests.post(
+                "https://api.gladia.io/audio/text/audio-transcription/",
+                headers=headers,
+                files=files
+            )
 
-        if response.status_code == 200:
-            text_result = response.json().get("prediction", "")
-            if text_result:
-                st.success(f"🗣️ You said: {text_result}")
-                query = text_result  # overwrite query box with transcribed text
+            if response.status_code == 200:
+                text_result = response.json().get("prediction", "")
+                if text_result:
+                    st.success(f"🗣️ You said: {text_result}")
+                    query = text_result  # overwrite query with transcribed text
 
-                # 🔥 Directly route to Gemini LLM
-                ans = handle_text_task(st.session_state.conversation, query)
-                st.session_state.conversation.append((query, ans))
+                    # 🔥 Directly send to Gemini
+                    ans = handle_text_task(st.session_state.conversation, query)
+                    st.session_state.conversation.append((query, ans))
 
+                else:
+                    st.warning("⚠️ No speech detected. Try again.")
             else:
-                st.warning("⚠️ No speech detected. Try again.")
-        else:
-            st.error(f"❌ Gladia API Error: {response.text}")
+                st.error(f"❌ Gladia API Error: {response.text}")
 
+    # Buttons
     col1, col2 = st.columns([1, 3])
     with col1:
-        process_clicked = st.button("Process")
+        process_clicked = st.button("Process Text Input")
     with col2:
         clear_clicked = st.button("Clear Conversation")
 
@@ -213,4 +213,3 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
-
