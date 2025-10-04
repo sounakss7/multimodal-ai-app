@@ -7,7 +7,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage
-from audio_recorder_streamlit import audio_recorder # 🎙️ for mic input
+from audio_recorder_streamlit import audio_recorder  # 🎙️ for mic input
 
 # =====================
 # Load environment variables
@@ -33,7 +33,7 @@ if not gladia_api_key:
 # Initialize Gemini LLM
 # =====================
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash", # Model restored as per your request
+    model="gemini-2.5-flash",
     temperature=0,
     google_api_key=google_api_key,
     streaming=True
@@ -90,8 +90,7 @@ with tab1:
     # Record voice (audio_recorder creates mic button)
     st.write("🎙️ Speak your query below:")
     audio_bytes = audio_recorder(text="", recording_color="#FF4B4B", neutral_color="#4B9EFF")
-    
-    # Corrected Voice Input Block
+
     if audio_bytes:
         st.audio(audio_bytes, format="audio/wav")
 
@@ -106,32 +105,26 @@ with tab1:
 
             if response.status_code == 200:
                 result_json = response.json()
-                
-                # More robust logic to extract transcription text
-                text_result = ""
-                if isinstance(result_json, dict):
-                    if "prediction" in result_json:
-                        text_result = result_json["prediction"]
-                    elif "transcription" in result_json:
-                        text_result = result_json["transcription"]
+
+                # ✅ Handle both dict and list response formats
+                if isinstance(result_json, dict) and "prediction" in result_json:
+                    text_result = result_json["prediction"]
                 elif isinstance(result_json, list) and len(result_json) > 0:
-                    first_item = result_json[0]
-                    if isinstance(first_item, dict) and "transcription" in first_item:
-                        text_result = first_item.get("transcription", "")
+                    text_result = result_json[0].get("transcription", "")
+                else:
+                    text_result = ""
 
                 if text_result:
                     st.success(f"🗣️ You said: {text_result}")
                     query = text_result.strip()
 
-                    st.info("🤖 Sending transcribed text to Gemini...")
+                    # 🔥 Directly send to Gemini
                     ans = handle_text_task(st.session_state.conversation, query)
                     st.session_state.conversation.append((query, ans))
                 else:
-                    st.warning("⚠️ Could not extract transcription from API response. Try again.")
-                    st.json(result_json)
+                    st.warning("⚠️ No valid speech detected. Try again.")
             else:
-                st.error(f"❌ Gladia API Error (Status {response.status_code}): {response.text}")
-
+                st.error(f"❌ Gladia API Error: {response.text}")
 
     col1, col2 = st.columns([1, 3])
     with col1:
@@ -141,7 +134,6 @@ with tab1:
 
     if clear_clicked:
         st.session_state.conversation = []
-        st.rerun()
 
     if process_clicked and query:
         ans = handle_text_task(st.session_state.conversation, query)
@@ -151,7 +143,7 @@ with tab1:
         st.markdown("### 🗂️ Conversation History")
         for user_q, assistant_a in st.session_state.conversation:
             st.markdown(f"**User:** {user_q}")
-            st.markdown(f"**Assistant:**\n{assistant_a}")
+            st.code(assistant_a, language="markdown")
             st.markdown("---")
 
 # =====================
@@ -162,19 +154,17 @@ with tab2:
 
     img_prompt = st.text_input("📝 Enter your image prompt:", key="img_prompt")
 
-    styles = ["Realistic", "Cartoon", "Fantasy", "Minimalist", "Cyberpunk"]
+    styles = ["Realistic", "Cartoon", "Fantasy", "Minimalist"]
     selected_style = st.radio("🎨 Choose a style:", styles, horizontal=True)
 
     def smart_enhance_prompt(user_prompt, style):
-        quick_prompt = f"Rewrite this short prompt into a detailed, comma-separated, high-quality {style} image generation description for an AI: {user_prompt}"
+        quick_prompt = f"Rewrite this short prompt into a detailed {style} image generation description: {user_prompt}"
         response = llm.invoke(quick_prompt)
         return response.content.strip()
 
     @st.cache_data(show_spinner=False)
-    def fetch_image(final_prompt):
-        from urllib.parse import quote
-        encoded_prompt = quote(final_prompt)
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+    def fetch_image(final_prompt, token):
+        url = f"https://image.pollinations.ai/prompt/{final_prompt}?token={token}"
         return requests.get(url).content
 
     if st.button("Generate Image"):
@@ -183,9 +173,8 @@ with tab2:
         else:
             with st.spinner(f"🎨 Generating {selected_style} image..."):
                 final_prompt = smart_enhance_prompt(img_prompt, selected_style)
-                st.info(f"Enhanced Prompt: {final_prompt}")
                 try:
-                    img_bytes = fetch_image(final_prompt)
+                    img_bytes = fetch_image(final_prompt, pollinations_token)
                     img = Image.open(BytesIO(img_bytes))
                     st.image(img, caption=final_prompt)
 
@@ -209,9 +198,6 @@ with tab3:
     uploaded_img = st.file_uploader("📂 Upload an image", type=["jpg", "jpeg", "png"])
     qna_prompt = st.text_input("💬 Ask something about the uploaded image:")
 
-    if uploaded_img:
-        st.image(uploaded_img, caption="Uploaded Image", use_column_width=True)
-
     if st.button("Analyze Image"):
         if not uploaded_img:
             st.warning("⚠️ Please upload an image first.")
@@ -219,24 +205,18 @@ with tab3:
             st.warning("⚠️ Please enter a question about the image.")
         else:
             with st.spinner("🔎 Analyzing image..."):
-                # Reset the file pointer and read bytes
-                uploaded_img.seek(0)
                 img_bytes = uploaded_img.read()
-                
-                # Create the content structure for the message
+                img_base64 = base64.b64encode(img_bytes).decode("utf-8")
+                data_url = f"data:image/png;base64,{img_base64}"
+
                 content = [
                     {"type": "text", "text": qna_prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": f"data:{uploaded_img.type};base64,{base64.b64encode(img_bytes).decode()}"
-                    }
+                    {"type": "image_url", "image_url": {"url": data_url}}
                 ]
 
                 response_placeholder = st.empty()
                 final_response = ""
-                
-                # Stream the response from the main 'llm' instance
+
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
-
