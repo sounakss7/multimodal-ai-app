@@ -48,7 +48,7 @@ st.title("🤖 Multimodal AI App (Text + Image Generator + Image Q&A + Voice Inp
 tab1, tab2, tab3 = st.tabs(["💬 Text & Voice Chat", "🎨 Image Generator", "🖼️ Image Q&A"])
 
 # =====================
-# TEXT CHAT TAB
+# TEXT + VOICE CHAT TAB
 # =====================
 with tab1:
     st.subheader("⚡ Fast Text + Voice Task Classifier & Gemini Chat")
@@ -83,11 +83,11 @@ with tab1:
         return final_response
 
     # =====================
-    # 🎙️ Voice + Text Input Section
+    # 🎙️ Voice Input + Text Input Section
     # =====================
     query = st.text_input("💬 Enter your request:", key="input_query")
 
-    # Record voice (mic button)
+    # Record voice (audio_recorder creates mic button)
     st.write("🎙️ Speak your query below:")
     audio_bytes = audio_recorder(text="", recording_color="#FF4B4B", neutral_color="#4B9EFF")
 
@@ -106,38 +106,29 @@ with tab1:
             if response.status_code == 200:
                 result_json = response.json()
 
-# Extract transcription safely
-if isinstance(result_json, dict) and "prediction" in result_json:
-    # sometimes dict format
-    text_result = result_json["prediction"]
-elif isinstance(result_json, list) and len(result_json) > 0:
-    # sometimes list format
-    text_result = result_json[0].get("transcription", "")
-else:
-    text_result = ""
+                # ✅ Handle both dict and list response formats
+                if isinstance(result_json, dict) and "prediction" in result_json:
+                    text_result = result_json["prediction"]
+                elif isinstance(result_json, list) and len(result_json) > 0:
+                    text_result = result_json[0].get("transcription", "")
+                else:
+                    text_result = ""
 
-if text_result:
-    st.success(f"🗣️ You said: {text_result}")
-    query = text_result.strip()
-    ans = handle_text_task(st.session_state.conversation, query)
-    st.session_state.conversation.append((query, ans))
-else:
-    st.warning("⚠️ No valid speech detected. Try again.")
-
+                if text_result:
+                    st.success(f"🗣️ You said: {text_result}")
+                    query = text_result.strip()
 
                     # 🔥 Directly send to Gemini
                     ans = handle_text_task(st.session_state.conversation, query)
                     st.session_state.conversation.append((query, ans))
-
                 else:
-                    st.warning("⚠️ No speech detected. Try again.")
+                    st.warning("⚠️ No valid speech detected. Try again.")
             else:
                 st.error(f"❌ Gladia API Error: {response.text}")
 
-    # Buttons
     col1, col2 = st.columns([1, 3])
     with col1:
-        process_clicked = st.button("Process Text Input")
+        process_clicked = st.button("Process")
     with col2:
         clear_clicked = st.button("Clear Conversation")
 
@@ -229,4 +220,3 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
-
