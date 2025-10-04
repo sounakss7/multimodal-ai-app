@@ -33,7 +33,7 @@ if not gladia_api_key:
 # Initialize Gemini LLM
 # =====================
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash", # Updated to a common, effective model
+    model="gemini-2.5-flash", # Model restored as per your request
     temperature=0,
     google_api_key=google_api_key,
     streaming=True
@@ -107,33 +107,28 @@ with tab1:
             if response.status_code == 200:
                 result_json = response.json()
                 
-                # --- START OF FIX ---
                 # More robust logic to extract transcription text
                 text_result = ""
                 if isinstance(result_json, dict):
-                    # Handles formats like {'prediction': 'text'} or {'transcription': 'text'}
                     if "prediction" in result_json:
                         text_result = result_json["prediction"]
                     elif "transcription" in result_json:
                         text_result = result_json["transcription"]
                 elif isinstance(result_json, list) and len(result_json) > 0:
-                    # Handles the format seen in your error: [{'transcription': 'text', ...}]
                     first_item = result_json[0]
                     if isinstance(first_item, dict) and "transcription" in first_item:
                         text_result = first_item.get("transcription", "")
-                # --- END OF FIX ---
 
                 if text_result:
                     st.success(f"🗣️ You said: {text_result}")
-                    query = text_result.strip() # This will now work correctly on the extracted string
+                    query = text_result.strip()
 
-                    # 🔥 Directly send to Gemini
                     st.info("🤖 Sending transcribed text to Gemini...")
                     ans = handle_text_task(st.session_state.conversation, query)
                     st.session_state.conversation.append((query, ans))
                 else:
                     st.warning("⚠️ Could not extract transcription from API response. Try again.")
-                    st.json(result_json) # Show the raw response for debugging
+                    st.json(result_json)
             else:
                 st.error(f"❌ Gladia API Error (Status {response.status_code}): {response.text}")
 
@@ -146,7 +141,7 @@ with tab1:
 
     if clear_clicked:
         st.session_state.conversation = []
-        st.rerun() # Use rerun to clear the UI instantly
+        st.rerun()
 
     if process_clicked and query:
         ans = handle_text_task(st.session_state.conversation, query)
@@ -177,7 +172,6 @@ with tab2:
 
     @st.cache_data(show_spinner=False)
     def fetch_image(final_prompt):
-        # URL encoding the prompt is safer for API calls
         from urllib.parse import quote
         encoded_prompt = quote(final_prompt)
         url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
@@ -225,22 +219,24 @@ with tab3:
             st.warning("⚠️ Please enter a question about the image.")
         else:
             with st.spinner("🔎 Analyzing image..."):
-                # Reset the file pointer before reading
+                # Reset the file pointer and read bytes
                 uploaded_img.seek(0)
                 img_bytes = uploaded_img.read()
                 
-                # Directly use bytes with the vision model
-                image_part = {
-                    "mime_type": uploaded_img.type,
-                    "data": img_bytes
-                }
-                
-                prompt_parts = [qna_prompt, image_part]
+                # Create the content structure for the message
+                content = [
+                    {"type": "text", "text": qna_prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": f"data:{uploaded_img.type};base64,{base64.b64encode(img_bytes).decode()}"
+                    }
+                ]
 
                 response_placeholder = st.empty()
                 final_response = ""
+                
+                # Stream the response from the main 'llm' instance
+                for chunk in llm.stream([HumanMessage(content=content)]):
+                    final_response += chunk.content or ""
+                    response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
 
-                # For multimodal, you pass the parts directly to the model
-                model_pro = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest", google_api_key=google_api_key)
-                response = model_pro.invoke(prompt_parts)
-                response_placeholder.markdown(f"**Answer:**\n\n{response.content}")
