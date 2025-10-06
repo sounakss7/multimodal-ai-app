@@ -88,7 +88,7 @@ with tab1:
     query = st.text_input("💬 Enter your request:", key="input_query")
 
     # Record voice (audio_recorder creates mic button)
-   st.write("🎙️ Speak your query below:")
+    st.write("🎙️ Speak your query below:")
     audio_bytes = audio_recorder(
     text="Click to start/stop recording",
     recording_color="#FF4B4B",
@@ -247,5 +247,6 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
 
 
