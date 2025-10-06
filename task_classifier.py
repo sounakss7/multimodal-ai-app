@@ -88,60 +88,65 @@ with tab1:
     query = st.text_input("💬 Enter your request:", key="input_query")
 
     # Record voice (audio_recorder creates mic button)
-    st.write("🎙️ Speak your query below:")
+    st.write("🎙️ Speak your query below (up to 30 seconds):")
     audio_bytes = audio_recorder(
-    text="Click to start/stop recording",
-    recording_color="#FF4B4B",
-    neutral_color="#4B9EFF"
-)
+        text="Click to start/stop recording",
+        recording_color="#FF4B4B",
+        neutral_color="#4B9EFF",
+        icon_size="2x",  # Larger mic button
+        energy_threshold=(-1.0, 1.0)
+    )
 
     if audio_bytes:
         st.audio(audio_bytes, format="audio/wav")
-    
-        # Save the audio temporarily (for length checking)
         tmp_path = "temp_audio.wav"
         with open(tmp_path, "wb") as f:
             f.write(audio_bytes)
-    
-        # Check duration to avoid too-short clips
-        import wave
+
         with wave.open(tmp_path, "rb") as wf:
             frames = wf.getnframes()
             rate = wf.getframerate()
             duration = frames / float(rate)
-    
-        if duration < 1.5:
+
+        if duration < 2:
             st.warning("⚠️ Your recording was too short — please record for at least 2 seconds.")
         else:
-            with st.spinner("🎧 Transcribing your voice via Gladia..."):
+            with st.spinner("🎧 Transcribing your voice..."):
                 files = {'audio': ("voice.wav", audio_bytes, "audio/wav")}
                 headers = {"x-gladia-key": gladia_api_key}
-    
                 response = requests.post(
                     "https://api.gladia.io/audio/text/audio-transcription/",
                     headers=headers,
                     files=files
                 )
-    
+
                 if response.status_code == 200:
                     result_json = response.json()
-    
-                    # ✅ Safely extract the transcription string
-                    text_result = None
+                    text_result = ""
+
+                    # ✅ SAFELY extract transcription
                     if isinstance(result_json, dict):
-                        if "prediction" in result_json:
-                            text_result = result_json["prediction"]
-                        elif "result" in result_json and isinstance(result_json["result"], list):
-                            text_result = result_json["result"][0].get("transcription", "")
-                        elif "transcription" in result_json:
+                        if "transcription" in result_json:
                             text_result = result_json["transcription"]
-                    elif isinstance(result_json, list) and len(result_json) > 0:
-                        text_result = result_json[0].get("transcription", "")
-    
-                    # Handle Gladia word-level output
-                    if isinstance(text_result, dict) and "transcription" in text_result:
-                        text_result = text_result["transcription"]
-    
+                        elif "result" in result_json and isinstance(result_json["result"], list):
+                            for item in result_json["result"]:
+                                if isinstance(item, dict) and "transcription" in item:
+                                    text_result = item["transcription"]
+                                    break
+                        elif "prediction" in result_json:
+                            text_result = result_json["prediction"]
+                    elif isinstance(result_json, list):
+                        for item in result_json:
+                            if isinstance(item, dict) and "transcription" in item:
+                                text_result = item["transcription"]
+                                break
+
+                    # ✅ Normalize to string
+                    if isinstance(text_result, list):
+                        text_result = " ".join(str(x) for x in text_result)
+                    if isinstance(text_result, dict):
+                        text_result = text_result.get("transcription", "")
+
                     if isinstance(text_result, str) and text_result.strip():
                         st.success(f"🗣️ You said: {text_result}")
                         query = text_result.strip()
@@ -151,7 +156,7 @@ with tab1:
                         st.warning("⚠️ Couldn't extract valid text from the API response.")
                 else:
                     st.error(f"❌ Gladia API Error: {response.text}")
-    
+
     
     col1, col2 = st.columns([1, 3])
     with col1:
@@ -247,6 +252,7 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
 
 
 
