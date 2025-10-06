@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage
 from audio_recorder_streamlit import audio_recorder  # 🎙️ for mic input
+import wave   
 
 # =====================
 # Load environment variables
@@ -252,6 +253,7 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
 
 
 
