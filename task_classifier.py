@@ -64,7 +64,7 @@ with tab1:
         prompt_text += f"User: {current_query}\nAssistant:"
         return prompt_text
 
-   def handle_text_task(conversation, query: str):
+    def handle_text_task(conversation, query: str):
         lower_q = query.lower()
         if any(phrase in lower_q for phrase in [
             "who built this agent", "who created this agent", "who made this agent",
@@ -88,7 +88,6 @@ with tab1:
             response_placeholder.markdown(f"**✅ Final Answer:**\n\n{final_response}")
     
         return final_response
-
 
     # =====================
     # 🎙️ Voice Input + Text Input Section
@@ -165,7 +164,6 @@ with tab1:
                 else:
                     st.error(f"❌ Gladia API Error: {response.text}")
 
-    
     col1, col2 = st.columns([1, 3])
     with col1:
         process_clicked = st.button("Process")
@@ -260,10 +258,3 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
-
-
-
-
-
-
-
