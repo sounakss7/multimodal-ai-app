@@ -64,24 +64,31 @@ with tab1:
         prompt_text += f"User: {current_query}\nAssistant:"
         return prompt_text
 
-    def handle_text_task(conversation, query: str):
-        lower_q = query.lower()
-        if any(phrase in lower_q for phrase in [
-            "who built this agent", "who created this agent", "who made this agent",
-            "who is the developer", "who is the creator"
-        ]):
-            return "This agent was built by **Sounak Sarkar**."
+   def handle_text_task(conversation, query: str):
+    lower_q = query.lower()
+    if any(phrase in lower_q for phrase in [
+        "who built this agent", "who created this agent", "who made this agent",
+        "who is the developer", "who is the creator"
+    ]):
+        return "This agent was built by **Sounak Sarkar**."
 
-        prompt = compose_prompt(conversation, query)
+    prompt = compose_prompt(conversation, query)
 
-        response_placeholder = st.empty()
-        final_response = ""
+    response_placeholder = st.empty()
+    final_response = ""
 
+    # ⚡ Faster streaming loop (optimized)
+    with st.spinner("⚡ Generating response..."):
         for chunk in llm.stream(prompt):
-            final_response += chunk.content or ""
-            response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+            if chunk.content:
+                final_response += chunk.content
+                # Faster updates using write() instead of markdown
+                response_placeholder.write(f"**Answer (streaming):**\n\n{final_response}")
+        # After streaming ends, show final formatted text
+        response_placeholder.markdown(f"**✅ Final Answer:**\n\n{final_response}")
 
-        return final_response
+    return final_response
+
 
     # =====================
     # 🎙️ Voice Input + Text Input Section
@@ -253,6 +260,7 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
 
 
 
