@@ -14,7 +14,7 @@ from PyPDF2 import PdfReader
 from pdf2image import convert_from_bytes
 import pytesseract
 import concurrent.futures
-from groq import Groq
+
 
 # =====================
 # Load environment variables
@@ -305,5 +305,6 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
