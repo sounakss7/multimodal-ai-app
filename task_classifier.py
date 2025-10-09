@@ -144,8 +144,8 @@ with tab1:
         st.info("🚀 Running Gemini and Groq models in parallel...")
 
         with st.spinner("Generating responses..."):
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future_gemini = executor.submit(lambda: llm_gemini.invoke(query).content)
+           with concurrent.futures.ThreadPoolExecutor() as executor:
+                future_gemini = executor.submit(lambda: llm.invoke(query).content)
                 future_groq = executor.submit(query_groq, query)
                 gemini_resp = future_gemini.result()
                 groq_resp = future_groq.result()
@@ -305,6 +305,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
