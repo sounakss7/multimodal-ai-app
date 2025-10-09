@@ -158,18 +158,32 @@ with tab1:
             st.markdown("### ⚡ Groq Response")
             st.markdown(groq_resp)
 
-        chosen = st.radio("✅ Which response do you prefer?", ["Gemini", "Groq"], horizontal=True)
-        if st.button("Confirm Choice"):
-            st.success(f"You chose **{chosen}** response.")
-            final_ans = gemini_resp if chosen == "Gemini" else groq_resp
-            st.session_state.conversation.append((query, final_ans))
+       # Radio button for choosing the preferred response
+chosen = st.radio("✅ Which response do you prefer?", ["Gemini", "Groq"], horizontal=True)
 
-    if st.session_state.conversation:
-        st.markdown("### 🗂️ Chat History")
-        for user_q, assistant_a in st.session_state.conversation:
-            st.markdown(f"**User:** {user_q}")
-            st.code(assistant_a, language="markdown")
-            st.markdown("---")
+# Initialize session state for last confirmed answer
+if "last_answer" not in st.session_state:
+    st.session_state.last_answer = ""
+
+# Confirm choice button
+if st.button("Confirm Choice"):
+    st.session_state.last_answer = gemini_resp if chosen == "Gemini" else groq_resp
+    st.session_state.conversation.append((query, st.session_state.last_answer))
+    st.success(f"You chose **{chosen}** response.")
+
+# Display last confirmed answer
+if st.session_state.last_answer:
+    st.markdown("### 📝 Confirmed Answer")
+    st.code(st.session_state.last_answer, language="markdown")
+
+# Display chat history
+if st.session_state.conversation:
+    st.markdown("### 🗂️ Chat History")
+    for user_q, assistant_a in st.session_state.conversation:
+        st.markdown(f"**User:** {user_q}")
+        st.code(assistant_a, language="markdown")
+        st.markdown("---")
+
 
 # =====================
 # IMAGE GENERATOR TAB (unchanged)
@@ -305,6 +319,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
