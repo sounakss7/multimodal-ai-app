@@ -1,2 +1,2 @@
-# CORRECT version
+
 tesseract-ocr
