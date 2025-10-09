@@ -140,50 +140,46 @@ with tab1:
     if clear_clicked:
         st.session_state.conversation = []
 
+   # Generate responses when "Generate Both" is clicked
     if process_clicked and query:
         st.info("🚀 Running Gemini and Groq models in parallel...")
-
         with st.spinner("Generating responses..."):
-           with concurrent.futures.ThreadPoolExecutor() as executor:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
                 future_gemini = executor.submit(lambda: llm.invoke(query).content)
                 future_groq = executor.submit(query_groq, query)
                 gemini_resp = future_gemini.result()
                 groq_resp = future_groq.result()
-
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.markdown("### 🤖 Gemini Response")
-            st.markdown(gemini_resp)
-        with col_b:
-            st.markdown("### ⚡ Groq Response")
-            st.markdown(groq_resp)
-
-       # Radio button for choosing the preferred response
-chosen = st.radio("✅ Which response do you prefer?", ["Gemini", "Groq"], horizontal=True)
-
-# Initialize session state for last confirmed answer
-if "last_answer" not in st.session_state:
-    st.session_state.last_answer = ""
-
-# Confirm choice button
-if st.button("Confirm Choice"):
-    st.session_state.last_answer = gemini_resp if chosen == "Gemini" else groq_resp
-    st.session_state.conversation.append((query, st.session_state.last_answer))
-    st.success(f"You chose **{chosen}** response.")
-
-# Display last confirmed answer
-if st.session_state.last_answer:
-    st.markdown("### 📝 Confirmed Answer")
-    st.code(st.session_state.last_answer, language="markdown")
-
-# Display chat history
-if st.session_state.conversation:
-    st.markdown("### 🗂️ Chat History")
-    for user_q, assistant_a in st.session_state.conversation:
-        st.markdown(f"**User:** {user_q}")
-        st.code(assistant_a, language="markdown")
-        st.markdown("---")
-
+    
+        # Save responses in session state
+        st.session_state.gemini_resp = gemini_resp
+        st.session_state.groq_resp = groq_resp
+    
+    # Check if responses exist in session_state before showing radio/confirm
+    if "gemini_resp" in st.session_state and "groq_resp" in st.session_state:
+        chosen = st.radio("✅ Which response do you prefer?", ["Gemini", "Groq"], horizontal=True)
+    
+        # Initialize session state for last confirmed answer
+        if "last_answer" not in st.session_state:
+            st.session_state.last_answer = ""
+    
+        # Confirm choice button
+        if st.button("Confirm Choice"):
+            st.session_state.last_answer = st.session_state.gemini_resp if chosen == "Gemini" else st.session_state.groq_resp
+            st.session_state.conversation.append((query, st.session_state.last_answer))
+            st.success(f"You chose **{chosen}** response.")
+    
+    # Display last confirmed answer
+    if "last_answer" in st.session_state and st.session_state.last_answer:
+        st.markdown("### 📝 Confirmed Answer")
+        st.code(st.session_state.last_answer, language="markdown")
+    
+    # Display chat history
+    if st.session_state.conversation:
+        st.markdown("### 🗂️ Chat History")
+        for user_q, assistant_a in st.session_state.conversation:
+            st.markdown(f"**User:** {user_q}")
+            st.code(assistant_a, language="markdown")
+            st.markdown("---")
 
 # =====================
 # IMAGE GENERATOR TAB (unchanged)
@@ -319,6 +315,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
