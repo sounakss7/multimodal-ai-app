@@ -53,11 +53,11 @@ llm = ChatGoogleGenerativeAI(
 def choose_groq_model(prompt: str):
     p = prompt.lower()
     if any(x in p for x in ["python", "code", "algorithm", "bug", "function", "script"]):
-        return "llama3-70b-8192"
+        return "llama-3.1-8b-instant"
     elif any(x in p for x in ["story", "poem", "creative", "write", "blog", "lyrics"]):
-        return "mixtral-8x7b-32768"
+        return "whisper-large-v3-turbo"
     else:
-        return "gemma2-13b"
+        return "llama-3.3-70b-versatile"
 # =====================
 # Groq Text Generation (API call)
 # =====================
@@ -305,6 +305,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
