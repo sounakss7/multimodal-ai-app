@@ -141,6 +141,9 @@ with tab1:
         st.session_state.conversation = []
 
    # Generate responses when "Generate Both" is clicked
+   # =======================
+# After generating both responses
+# =======================
     if process_clicked and query:
         st.info("🚀 Running Gemini and Groq models in parallel...")
         with st.spinner("Generating responses..."):
@@ -150,15 +153,25 @@ with tab1:
                 gemini_resp = future_gemini.result()
                 groq_resp = future_groq.result()
     
-        # Save responses in session state
+        # Store responses in session state
         st.session_state.gemini_resp = gemini_resp
         st.session_state.groq_resp = groq_resp
     
-    # Check if responses exist in session_state before showing radio/confirm
+    # =======================
+    # Display both responses side by side
+    # =======================
     if "gemini_resp" in st.session_state and "groq_resp" in st.session_state:
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("### 🤖 Gemini Response")
+            st.code(st.session_state.gemini_resp, language="markdown")
+        with col_b:
+            st.markdown("### ⚡ Groq Response")
+            st.code(st.session_state.groq_resp, language="markdown")
+    
+        # Radio to choose preferred response
         chosen = st.radio("✅ Which response do you prefer?", ["Gemini", "Groq"], horizontal=True)
     
-        # Initialize session state for last confirmed answer
         if "last_answer" not in st.session_state:
             st.session_state.last_answer = ""
     
@@ -315,6 +328,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
