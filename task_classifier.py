@@ -258,3 +258,39 @@ with tab3:
                 for chunk in llm.stream([HumanMessage(content=content)]):
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+    # =========================
+    # 📄 PDF Upload and Analysis Section
+    # =========================
+    st.subheader("📄 Upload a PDF & Ask Gemini")
+
+    uploaded_pdf = st.file_uploader("📂 Upload a PDF", type=["pdf"])
+    pdf_question = st.text_input("💬 Ask something about the uploaded PDF:")
+
+    if st.button("Analyze PDF"):
+        if not uploaded_pdf:
+            st.warning("⚠️ Please upload a PDF first.")
+        elif not pdf_question:
+            st.warning("⚠️ Please enter a question about the PDF.")
+        else:
+            with st.spinner("🔎 Reading and analyzing PDF..."):
+                from PyPDF2 import PdfReader
+                pdf_reader = PdfReader(uploaded_pdf)
+                pdf_text = ""
+                for page in pdf_reader.pages:
+                    pdf_text += page.extract_text() or ""
+
+                if not pdf_text.strip():
+                    st.error("⚠️ No readable text found in the PDF.")
+                else:
+                    content = [
+                        {"type": "text", "text": f"Question: {pdf_question}\n\nPDF Content:\n{pdf_text[:8000]}"}
+                    ]
+
+                    response_placeholder = st.empty()
+                    final_response = ""
+
+                    for chunk in llm.stream([HumanMessage(content=content)]):
+                        final_response += chunk.content or ""
+                        response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
+
