@@ -319,4 +319,5 @@ with tab3:
 
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
-                        response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") . can u improve more faster speed of text generation
+                        response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
