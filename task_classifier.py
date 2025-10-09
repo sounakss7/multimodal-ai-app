@@ -53,7 +53,7 @@ llm = ChatGoogleGenerativeAI(
 def choose_groq_model(prompt: str):
     p = prompt.lower()
     if any(x in p for x in ["python", "code", "algorithm", "bug", "function", "script"]):
-        return "qwen/qwen3-32b"
+        return "openai/gpt-oss-20b"
     elif any(x in p for x in ["story", "poem", "creative", "write", "blog", "lyrics"]):
         return "meta-llama/llama-4-maverick-17b-128e-instruct"
     else:
@@ -315,6 +315,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
