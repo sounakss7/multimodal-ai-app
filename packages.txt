@@ -1,0 +1,2 @@
+# System packages for apt-get to install
+tesseract-ocr
