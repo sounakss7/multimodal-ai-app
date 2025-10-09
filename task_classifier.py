@@ -57,7 +57,7 @@ def choose_groq_model(prompt: str):
     elif any(x in p for x in ["story", "poem", "creative", "write", "blog", "lyrics"]):
         return "mixtral-8x7b-32768"
     else:
-        return "gemma2-9b-it"
+        return "gemma2-13b"
 # =====================
 # Groq Text Generation (API call)
 # =====================
@@ -305,6 +305,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
