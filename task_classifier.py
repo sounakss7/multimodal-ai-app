@@ -13,7 +13,8 @@ import io
 from PyPDF2 import PdfReader
 from pdf2image import convert_from_bytes
 import pytesseract
-
+import concurrent.futures
+from groq import Groq
 
 # =====================
 # Load environment variables
@@ -22,6 +23,8 @@ load_dotenv()
 google_api_key = st.secrets.get("GOOGLE_API_KEY", os.getenv("GOOGLE_API_KEY"))
 pollinations_token = st.secrets.get("POLLINATIONS_TOKEN", os.getenv("POLLINATIONS_TOKEN"))
 gladia_api_key = st.secrets.get("GLADIA_API_KEY", os.getenv("GLADIA_API_KEY"))
+groq_api_key = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
+
 
 if not google_api_key:
     st.error("❌ GOOGLE_API_KEY not found! Please set it in .env or Streamlit Secrets.")
@@ -34,6 +37,9 @@ if not pollinations_token:
 if not gladia_api_key:
     st.error("❌ GLADIA_API_KEY not found! Please set it in .env or Streamlit Secrets.")
     st.stop()
+if not groq_api_key:
+    st.error("❌ GROQ_API_KEY not found! Please set it.env or Streamlit Secrets")
+    st.stop()
 
 # =====================
 # Initialize Gemini LLM
@@ -44,6 +50,41 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=google_api_key,
     streaming=True
 )
+def choose_groq_model(prompt: str):
+    p = prompt.lower()
+    if any(x in p for x in ["python", "code", "algorithm", "bug", "function", "script"]):
+        return "llama3-70b-8192"
+    elif any(x in p for x in ["story", "poem", "creative", "write", "blog", "lyrics"]):
+        return "mixtral-8x7b-32768"
+    else:
+        return "gemma2-9b-it"
+# =====================
+# Groq Text Generation (API call)
+# =====================
+def query_groq(prompt: str):
+    model = choose_groq_model(prompt)
+    headers = {
+        "Authorization": f"Bearer {groq_api_key}",
+        "Content-Type": "application/json",
+    }
+    data = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.4,
+        "max_tokens": 1024,
+    }
+    try:
+        resp = requests.post("https://api.groq.com/openai/v1/chat/completions", json=data, headers=headers)
+        if resp.status_code == 200:
+            content = resp.json()["choices"][0]["message"]["content"]
+            return f"**Model:** {model}\n\n{content}"
+        else:
+            return f"❌ Groq API Error: {resp.text}"
+    except Exception as e:
+        return f"⚠️ Groq Error: {e}"
+
+
+
 
 # =====================
 # Streamlit App Layout
@@ -57,57 +98,16 @@ tab1, tab2, tab3 = st.tabs(["💬 Text & Voice Chat", "🎨 Image Generator", "�
 # TEXT + VOICE CHAT TAB
 # =====================
 with tab1:
-    st.subheader("⚡ Fast Text + Voice Task Classifier & Gemini Chat")
+    st.subheader("⚡ Gemini + Groq Parallel Response Chat")
 
     if "conversation" not in st.session_state:
         st.session_state.conversation = []
 
-    def compose_prompt(conversation, current_query):
-        prompt_text = ""
-        for user_q, assistant_a in conversation:
-            prompt_text += f"User: {user_q}\nAssistant: {assistant_a}\n"
-        prompt_text += f"User: {current_query}\nAssistant:"
-        return prompt_text
+    query = st.text_input("💬 Enter your question:", key="input_query")
 
-    def handle_text_task(conversation, query: str):
-        lower_q = query.lower()
-        if any(phrase in lower_q for phrase in [
-            "who built this agent", "who created this agent", "who made this agent",
-            "who is the developer", "who is the creator"
-        ]):
-            return "This agent was built by **Sounak Sarkar**."
-    
-        prompt = compose_prompt(conversation, query)
-    
-        response_placeholder = st.empty()
-        final_response = ""
-    
-        # ⚡ Faster streaming loop (optimized)
-        with st.spinner("⚡ Generating response..."):
-            for chunk in llm.stream(prompt):
-                if chunk.content:
-                    final_response += chunk.content
-                    # Faster updates using write() instead of markdown
-                    response_placeholder.write(f"**Answer (streaming):**\n\n{final_response}")
-            # After streaming ends, show final formatted text
-            response_placeholder.markdown(f"**✅ Final Answer:**\n\n{final_response}")
-    
-        return final_response
-
-    # =====================
-    # 🎙️ Voice Input + Text Input Section
-    # =====================
-    query = st.text_input("💬 Enter your request:", key="input_query")
-
-    # Record voice (audio_recorder creates mic button)
+    # 🎙️ Voice input
     st.write("🎙️ Speak your query below (up to 30 seconds):")
-    audio_bytes = audio_recorder(
-        text="Click to start/stop recording",
-        recording_color="#FF4B4B",
-        neutral_color="#4B9EFF",
-        icon_size="2x",  # Larger mic button
-        energy_threshold=(-1.0, 1.0)
-    )
+    audio_bytes = audio_recorder(text="Click to start/stop recording", recording_color="#FF4B4B")
 
     if audio_bytes:
         st.audio(audio_bytes, format="audio/wav")
@@ -120,75 +120,60 @@ with tab1:
             rate = wf.getframerate()
             duration = frames / float(rate)
 
-        if duration < 2:
-            st.warning("⚠️ Your recording was too short — please record for at least 2 seconds.")
-        else:
-            with st.spinner("🎧 Transcribing your voice..."):
+        if duration >= 2:
+            with st.spinner("🎧 Transcribing voice..."):
                 files = {'audio': ("voice.wav", audio_bytes, "audio/wav")}
                 headers = {"x-gladia-key": gladia_api_key}
-                response = requests.post(
-                    "https://api.gladia.io/audio/text/audio-transcription/",
-                    headers=headers,
-                    files=files
-                )
-
+                response = requests.post("https://api.gladia.io/audio/text/audio-transcription/", headers=headers, files=files)
                 if response.status_code == 200:
-                    result_json = response.json()
-                    text_result = ""
-
-                    # ✅ SAFELY extract transcription
-                    if isinstance(result_json, dict):
-                        if "transcription" in result_json:
-                            text_result = result_json["transcription"]
-                        elif "result" in result_json and isinstance(result_json["result"], list):
-                            for item in result_json["result"]:
-                                if isinstance(item, dict) and "transcription" in item:
-                                    text_result = item["transcription"]
-                                    break
-                        elif "prediction" in result_json:
-                            text_result = result_json["prediction"]
-                    elif isinstance(result_json, list):
-                        for item in result_json:
-                            if isinstance(item, dict) and "transcription" in item:
-                                text_result = item["transcription"]
-                                break
-
-                    # ✅ Normalize to string
-                    if isinstance(text_result, list):
-                        text_result = " ".join(str(x) for x in text_result)
-                    if isinstance(text_result, dict):
-                        text_result = text_result.get("transcription", "")
-
-                    if isinstance(text_result, str) and text_result.strip():
+                    text_result = response.json().get("transcription", "")
+                    if text_result:
+                        query = text_result
                         st.success(f"🗣️ You said: {text_result}")
-                        query = text_result.strip()
-                        ans = handle_text_task(st.session_state.conversation, query)
-                        st.session_state.conversation.append((query, ans))
-                    else:
-                        st.warning("⚠️ Couldn't extract valid text from the API response.")
-                else:
-                    st.error(f"❌ Gladia API Error: {response.text}")
 
-    col1, col2 = st.columns([1, 3])
+    col1, col2 = st.columns([1, 1])
     with col1:
-        process_clicked = st.button("Process")
+        process_clicked = st.button("⚡ Generate Both")
     with col2:
-        clear_clicked = st.button("Clear Conversation")
+        clear_clicked = st.button("🧹 Clear Chat")
 
     if clear_clicked:
         st.session_state.conversation = []
 
     if process_clicked and query:
-        ans = handle_text_task(st.session_state.conversation, query)
-        st.session_state.conversation.append((query, ans))
+        st.info("🚀 Running Gemini and Groq models in parallel...")
+
+        with st.spinner("Generating responses..."):
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future_gemini = executor.submit(lambda: llm_gemini.invoke(query).content)
+                future_groq = executor.submit(query_groq, query)
+                gemini_resp = future_gemini.result()
+                groq_resp = future_groq.result()
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("### 🤖 Gemini Response")
+            st.markdown(gemini_resp)
+        with col_b:
+            st.markdown("### ⚡ Groq Response")
+            st.markdown(groq_resp)
+
+        chosen = st.radio("✅ Which response do you prefer?", ["Gemini", "Groq"], horizontal=True)
+        if st.button("Confirm Choice"):
+            st.success(f"You chose **{chosen}** response.")
+            final_ans = gemini_resp if chosen == "Gemini" else groq_resp
+            st.session_state.conversation.append((query, final_ans))
 
     if st.session_state.conversation:
-        st.markdown("### 🗂️ Conversation History")
+        st.markdown("### 🗂️ Chat History")
         for user_q, assistant_a in st.session_state.conversation:
             st.markdown(f"**User:** {user_q}")
             st.code(assistant_a, language="markdown")
             st.markdown("---")
 
+# =====================
+# IMAGE GENERATOR TAB (unchanged)
+# ==================
 # =====================
 # IMAGE GENERATOR TAB
 # =====================
@@ -320,4 +305,5 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
