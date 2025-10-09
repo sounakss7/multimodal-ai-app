@@ -1,2 +1,2 @@
-# System packages for apt-get to install
+# CORRECT version
 tesseract-ocr
