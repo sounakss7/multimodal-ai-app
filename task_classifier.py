@@ -14,17 +14,7 @@ from PyPDF2 import PdfReader
 from pdf2image import convert_from_bytes
 import pytesseract
 import concurrent.futures
-def inject_custom_css():
-    st.markdown("""
-        <style>
-            /* Target all preformatted text and code blocks */
-            pre, code {
-                white-space: pre-wrap !important;
-                word-wrap: break-word !important;
-                overflow-wrap: break-word !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+
 
 # =====================
 # Load environment variables
@@ -100,7 +90,7 @@ def query_groq(prompt: str):
 # Streamlit App Layout
 # =====================
 st.set_page_config(page_title="🤖 Multimodal AI App", page_icon="🤖", layout="centered")
-inject_custom_css()
+
 st.title("🤖 Multimodal AI App (Text + Image Generator + Image Q&A + Voice Input)")
 
 tab1, tab2, tab3 = st.tabs(["💬 Text & Voice Chat", "🎨 Image Generator", "🖼️ Image Q&A"])
@@ -339,6 +329,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
