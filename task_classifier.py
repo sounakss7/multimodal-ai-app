@@ -185,7 +185,7 @@ with tab1:
     # Display last confirmed answer
     if "last_answer" in st.session_state and st.session_state.last_answer:
         st.markdown("### 📝 Confirmed Answer")
-        st.code(st.session_state.last_answer, language="markdown")
+        st.code(st.session_state.last_answer,)
     
     # Display chat history
     if st.session_state.conversation:
@@ -329,6 +329,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
