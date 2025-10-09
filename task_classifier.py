@@ -13,7 +13,6 @@ import io
 from PyPDF2 import PdfReader
 from pdf2image import convert_from_bytes
 import pytesseract
-import time
 
 
 # =====================
@@ -70,8 +69,6 @@ with tab1:
         prompt_text += f"User: {current_query}\nAssistant:"
         return prompt_text
 
-   
-
     def handle_text_task(conversation, query: str):
         lower_q = query.lower()
         if any(phrase in lower_q for phrase in [
@@ -81,34 +78,22 @@ with tab1:
             return "This agent was built by **Sounak Sarkar**."
     
         prompt = compose_prompt(conversation, query)
+    
         response_placeholder = st.empty()
         final_response = ""
     
-        # ⚡ Stream with adaptive update frequency
+        # ⚡ Faster streaming loop (optimized)
         with st.spinner("⚡ Generating response..."):
-            last_update_time = time.time()
-            buffer_text = ""
-    
             for chunk in llm.stream(prompt):
-                if not chunk.content:
-                    continue
-                buffer_text += chunk.content
-                final_response += chunk.content
+                if chunk.content:
+                    final_response += chunk.content
+                    # Faster updates using write() instead of markdown
+                    response_placeholder.write(f"**Answer (streaming):**\n\n{final_response}")
+            # After streaming ends, show final formatted text
+            response_placeholder.markdown(f"**✅ Final Answer:**\n\n{final_response}")
     
-                # Update UI every 0.15 seconds instead of every token
-                if time.time() - last_update_time > 0.15:
-                    response_placeholder.write(buffer_text)
-                    buffer_text = ""
-                    last_update_time = time.time()
-    
-            # Flush remaining content
-            if buffer_text:
-                response_placeholder.write(buffer_text)
-    
-        # ✅ Final formatted output (once)
-        response_placeholder.markdown(f"**✅ Final Answer:**\n\n{final_response}")
         return final_response
-    
+
     # =====================
     # 🎙️ Voice Input + Text Input Section
     # =====================
@@ -334,5 +319,4 @@ with tab3:
 
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
-                        response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
-
+                        response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") . can u improve more faster speed of text generation
