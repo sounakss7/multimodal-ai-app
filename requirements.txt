@@ -11,3 +11,7 @@ pillow
 python-dotenv
 requests
 audio-recorder-streamlit
+PyPDF2
+pytesseract
+pdf2image
+Pillow
