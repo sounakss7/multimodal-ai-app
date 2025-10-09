@@ -165,10 +165,10 @@ with tab1:
         col_a, col_b = st.columns(2)
         with col_a:
             st.markdown("### 🤖 Gemini Response")
-            st.code(st.session_state.gemini_resp, language="markdown")
+            st.code(st.session_state.gemini_resp,)
         with col_b:
             st.markdown("### ⚡ Groq Response")
-            st.code(st.session_state.groq_resp, language="markdown")
+            st.code(st.session_state.groq_resp,)
     
         # Radio to choose preferred response
         chosen = st.radio("✅ Which response do you prefer?", ["Gemini", "Groq"], horizontal=True)
@@ -329,6 +329,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
