@@ -267,6 +267,9 @@ with tab3:
     # =========================
     # 📄 PDF Upload and OCR + Gemini Analysis
     # =========================
+       # =========================
+    # 📄 PDF Upload and Gemini Analysis (No Poppler Required)
+    # =========================
     st.subheader("📄 Upload a PDF & Ask Gemini")
 
     uploaded_pdf = st.file_uploader("📂 Upload a PDF", type=["pdf"])
@@ -286,15 +289,20 @@ with tab3:
                     reader = PdfReader(uploaded_pdf)
                     for page in reader.pages:
                         pdf_text += page.extract_text() or ""
-
                 except Exception as e:
                     st.error(f"PDF read error: {e}")
 
-                # If no text found → use OCR fallback
+                # If no text found → fallback: treat each page as image
                 if not pdf_text.strip():
-                    st.info("🧠 No readable text found — using OCR to extract text...")
-                    images = convert_from_bytes(uploaded_pdf.read())
-                    for i, img in enumerate(images):
+                    st.info("🧠 No readable text found — converting pages using Pillow instead of Poppler...")
+                    from PIL import Image
+                    import fitz  # PyMuPDF (lightweight and Streamlit-safe)
+                    uploaded_pdf.seek(0)
+                    doc = fitz.open(stream=uploaded_pdf.read(), filetype="pdf")
+
+                    for i, page in enumerate(doc):
+                        pix = page.get_pixmap()
+                        img = Image.open(io.BytesIO(pix.tobytes("png")))
                         text = pytesseract.image_to_string(img)
                         pdf_text += f"\n--- Page {i+1} ---\n" + text
 
