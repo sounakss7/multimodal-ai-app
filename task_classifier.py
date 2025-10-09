@@ -9,6 +9,11 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage
 from audio_recorder_streamlit import audio_recorder  # 🎙️ for mic input
 import wave   
+import io
+from PyPDF2 import PdfReader
+from pdf2image import convert_from_bytes
+import pytesseract
+
 
 # =====================
 # Load environment variables
@@ -259,7 +264,8 @@ with tab3:
                     final_response += chunk.content or ""
                     response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
     # =========================
-    # 📄 PDF Upload and Analysis Section
+    # =========================
+    # 📄 PDF Upload and OCR + Gemini Analysis
     # =========================
     st.subheader("📄 Upload a PDF & Ask Gemini")
 
@@ -273,15 +279,29 @@ with tab3:
             st.warning("⚠️ Please enter a question about the PDF.")
         else:
             with st.spinner("🔎 Reading and analyzing PDF..."):
-                from PyPDF2 import PdfReader
-                pdf_reader = PdfReader(uploaded_pdf)
                 pdf_text = ""
-                for page in pdf_reader.pages:
-                    pdf_text += page.extract_text() or ""
+
+                try:
+                    # Try extracting text normally first
+                    reader = PdfReader(uploaded_pdf)
+                    for page in reader.pages:
+                        pdf_text += page.extract_text() or ""
+
+                except Exception as e:
+                    st.error(f"PDF read error: {e}")
+
+                # If no text found → use OCR fallback
+                if not pdf_text.strip():
+                    st.info("🧠 No readable text found — using OCR to extract text...")
+                    images = convert_from_bytes(uploaded_pdf.read())
+                    for i, img in enumerate(images):
+                        text = pytesseract.image_to_string(img)
+                        pdf_text += f"\n--- Page {i+1} ---\n" + text
 
                 if not pdf_text.strip():
-                    st.error("⚠️ No readable text found in the PDF.")
+                    st.error("⚠️ Could not extract text from PDF even after OCR.")
                 else:
+                    st.success("✅ Text extracted successfully! Sending to Gemini...")
                     content = [
                         {"type": "text", "text": f"Question: {pdf_question}\n\nPDF Content:\n{pdf_text[:8000]}"}
                     ]
@@ -292,5 +312,3 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
-
-
