@@ -1,7 +1,4 @@
-File "/mount/src/task-routing-gemini-chat-agent/task_classifier.py", line 234
-                  gemini_time = 1.2  # you can later measure real latency
-                  ^
-SyntaxError: expected 'except' or 'finally' block . import os
+
 import requests
 import base64
 from io import BytesIO
@@ -467,6 +464,7 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
 
 
 
