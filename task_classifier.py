@@ -231,48 +231,23 @@ with tab1:
     
                     # Simulated metric comparison (example metrics)
                    # Simulated metric comparison (example metrics)
-                    gemini_time = 1.2  # you can later measure real latency
-                    groq_time = 1.8
-                    
-                # Assign sample metrics based on judge's decision
-                if winner == "Gemini":
-                    gemini_accuracy = round(random.uniform(90, 96), 2)
-                    gemini_precision = round(random.uniform(0.88, 0.95), 2)
-                    gemini_f1 = round(random.uniform(0.87, 0.94), 2)
-                
-                    groq_accuracy = round(random.uniform(80, 90), 2)
-                    groq_precision = round(random.uniform(0.75, 0.86), 2)
-                    groq_f1 = round(random.uniform(0.74, 0.85), 2)
-                else:
-                    gemini_accuracy = round(random.uniform(80, 90), 2)
-                    gemini_precision = round(random.uniform(0.75, 0.86), 2)
-                    gemini_f1 = round(random.uniform(0.74, 0.85), 2)
-                
-                    groq_accuracy = round(random.uniform(90, 96), 2)
-                    groq_precision = round(random.uniform(0.88, 0.95), 2)
-                    groq_f1 = round(random.uniform(0.87, 0.94), 2)
-                
-                eval_time = round(time.time() - start_eval, 2)
-                
-                # Display results
-                st.success(f"🏆 **Best Model:** {winner}")
-                st.markdown("### 📊 Evaluation Metrics Comparison")
-                
-                metrics_table = f"""
-                | Metric | Gemini | Groq |
-                |:--|:--:|:--:|
-                | **Response Time (s)** | {gemini_time} | {groq_time} |
-                | **Accuracy (%)** | {gemini_accuracy} | {groq_accuracy} |
-                | **Precision** | {gemini_precision} | {groq_precision} |
-                | **F1 Score** | {gemini_f1} | {groq_f1} |
-                """
-                
-                st.markdown(metrics_table)
-                st.write(f"⏱️ **Evaluation Time:** {eval_time}s")
-                
-                st.markdown("### 🧾 Judge's Explanation")
-                st.markdown(judgment)
-
+                    gemini_time = 1.2  # placeholder
+                    groq_time = 1.8  # placeholder
+                    accuracy = round(92 + (2 if winner == "Gemini" else 0), 2)
+                    f1_score = round(0.89 + (0.03 if winner == "Gemini" else 0), 2)
+                    eval_time = round(time.time() - start_eval, 2)
+    
+                    # Display results
+                    st.success(f"🏆 **Best Model:** {winner}")
+                    st.markdown("### 📊 Evaluation Metrics")
+                    st.write(f"- **Gemini Response Time:** {gemini_time}s")
+                    st.write(f"- **Groq Response Time:** {groq_time}s")
+                    st.write(f"- **Accuracy:** {accuracy}%")
+                    st.write(f"- **F1 Score:** {f1_score}")
+                    st.write(f"- **Evaluation Time:** {eval_time}s")
+    
+                    st.markdown("### 🧾 Judge's Explanation")
+                    st.markdown(judgment) .  this is ok but i want acuracy of each model and f1 score of each model  and precision of each model
                 except Exception as e:
                     st.error(f"❌ Auto-evaluation failed: {e}")
 
@@ -464,6 +439,7 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
 
 
 
