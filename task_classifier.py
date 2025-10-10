@@ -1,4 +1,4 @@
-
+import os
 import requests
 import base64
 from io import BytesIO
@@ -439,6 +439,7 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
 
 
 
