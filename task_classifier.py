@@ -474,23 +474,6 @@ with tab4:
         st.error(f"⚠️ Could not fetch news: {e}")
 
     st.markdown("---")
-
-    # ---- Date & Time ----
-    from datetime import datetime
-    import time
-    import pytz
-    
-    # Define the timezone for India
-    INDIA_TZ = pytz.timezone('Asia/Kolkata')
-    
-    st.markdown("### 🕒 Live Time in India (IST)")
-    placeholder = st.empty()
-    
-    while True:
-        now_india = datetime.now(INDIA_TZ).strftime("%A, %d %B %Y | %I:%M:%S %p")
-        placeholder.info(f"{now_india}")
-        time.sleep(1)
-
     # ---- AI Tip of the Day ----
     import random
     ai_tips = [
@@ -517,6 +500,21 @@ with tab4:
         "This section helps you stay informed and productive with quick access to Google Search, "
         "AI news updates, real-time date/time, daily AI tips, and a quick notes pad."
     )
+# ---- Date & Time ----
+    from datetime import datetime
+    import time
+    import pytz
+    
+    # Define the timezone for India
+    INDIA_TZ = pytz.timezone('Asia/Kolkata')
+    
+    st.markdown("### 🕒 Live Time in India (IST)")
+    placeholder = st.empty()
+    
+    while True:
+        now_india = datetime.now(INDIA_TZ).strftime("%A, %d %B %Y | %I:%M:%S %p")
+        placeholder.info(f"{now_india}")
+        time.sleep(1)
 
 
 
