@@ -247,7 +247,7 @@ with tab1:
                     st.write(f"- **Evaluation Time:** {eval_time}s")
     
                     st.markdown("### 🧾 Judge's Explanation")
-                    st.markdown(judgment) .  this is ok but i want acuracy of each model and f1 score of each model  and precision of each model
+                    st.markdown(judgment) .  
                 except Exception as e:
                     st.error(f"❌ Auto-evaluation failed: {e}")
 
@@ -439,6 +439,7 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
 
 
 
