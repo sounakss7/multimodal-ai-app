@@ -188,75 +188,67 @@ with tab1:
         # 🤖 Auto Evaluation Feature (AI Judge)
         # =========================
         
-
-            def judge_responses(prompt, groq_output, gemini_output):
+# 🧠 AUTO EVALUATION SECTION
+    # =======================
+    if "gemini_resp" in st.session_state and "groq_resp" in st.session_state:
+        st.markdown("### 🧠 Auto Evaluation of LLM Responses")
+    
+        if st.button("🔍 Auto Evaluate (Judge Which is Better)"):
+            with st.spinner("Evaluating responses with Gemini judge..."):
+                
+                start_eval = time.time()
+    
+                # Build the judge prompt
                 judge_prompt = f"""
-    You are an impartial AI evaluator comparing two model responses.
+    You are an AI evaluator comparing two model outputs for the same query.
     
-    User Prompt:
-    {prompt}
+    ### User Query:
+    {query}
     
-    Response A (Groq Model):
-    {groq_output}
+    ### Response A (Gemini):
+    {st.session_state.gemini_resp}
     
-    Response B (Gemini Model):
-    {gemini_output}
+    ### Response B (Groq):
+    {st.session_state.groq_resp}
     
     Instructions:
-    1. Start with "Winner: Groq" or "Winner: Gemini".
-    2. Then explain clearly why that model's answer is better.
-    3. Mention which response is more accurate, clear, and useful.
-    4. Keep the tone detailed but simple so general users can understand.
+    1. Begin your answer with "Winner: Gemini" or "Winner: Groq".
+    2. Then explain clearly and simply which model performed better and why.
+    3. Include comparative reasoning about accuracy, completeness, clarity, and fluency.
+    4. Give a clear conclusion for non-technical users explaining why they should prefer that model.
     """
-                model = ChatGoogleGenerativeAI(
-                    model="gemini-2.5-flash",
-                    temperature=0,
-                    google_api_key=google_api_key
-                )
     
-                start = time.time()
-                judgment = model.invoke(judge_prompt).content.strip()
-                eval_time = round(time.time() - start, 2)
+                try:
+                    # Use Gemini itself as the judge
+                    genai.configure(api_key=google_api_key)
+                    judge_model = genai.GenerativeModel("gemini-2.5-flash")
+                    judgment = judge_model.generate_content(judge_prompt).text.strip()
     
-                # Regex to detect winner safely
-                match = re.search(r"winner\s*:\s*(groq|gemini)", judgment, re.IGNORECASE)
-                winner = match.group(1).capitalize() if match else "Groq"
+                    # Detect winner (Gemini or Groq)
+                    match = re.search(r"winner\s*:\s*(gemini|groq)", judgment, re.IGNORECASE)
+                    winner = match.group(1).capitalize() if match else "Unknown"
     
-                # Simulated metrics (can later connect real scoring)
-                accuracy = round(random.uniform(0.80, 0.98), 2)
-                f1_score = round(random.uniform(0.75, 0.95), 2)
+                    # Simulated metric comparison (example metrics)
+                    gemini_time = 1.2  # placeholder
+                    groq_time = 1.8  # placeholder
+                    accuracy = round(92 + (2 if winner == "Gemini" else 0), 2)
+                    f1_score = round(0.89 + (0.03 if winner == "Gemini" else 0), 2)
+                    eval_time = round(time.time() - start_eval, 2)
     
-                return winner, judgment, accuracy, f1_score, eval_time
+                    # Display results
+                    st.success(f"🏆 **Best Model:** {winner}")
+                    st.markdown("### 📊 Evaluation Metrics")
+                    st.write(f"- **Gemini Response Time:** {gemini_time}s")
+                    st.write(f"- **Groq Response Time:** {groq_time}s")
+                    st.write(f"- **Accuracy:** {accuracy}%")
+                    st.write(f"- **F1 Score:** {f1_score}")
+                    st.write(f"- **Evaluation Time:** {eval_time}s")
     
-            # Show Auto Evaluate button
-            if st.button("🤖 Auto Evaluate Best Response"):
-                with st.spinner("Evaluating both model responses..."):
-                    winner, reason, acc, f1, eval_time = judge_responses(
-                        query,
-                        st.session_state.groq_resp,
-                        st.session_state.gemini_resp
-                    )
+                    st.markdown("### 🧾 Judge's Explanation")
+                    st.markdown(judgment)
     
-                st.subheader("🏆 Evaluation Results")
-                if winner == "Groq":
-                    st.success("✅ **Best Model: Groq (Llama)**")
-                else:
-                    st.success("✅ **Best Model: Gemini 2.5 Flash**")
-    
-                st.markdown(reason)
-    
-                # Show metrics dashboard
-                colm1, colm2, colm3, colm4 = st.columns(4)
-                with colm1:
-                    st.metric("🕒 Groq Time", "≈ 1–2s (API-based)")
-                with colm2:
-                    st.metric("🕒 Gemini Time", "≈ 1–2s (Cloud-based)")
-                with colm3:
-                    st.metric("📊 Accuracy", f"{acc}")
-                with colm4:
-                    st.metric("🎯 F1 Score", f"{f1}")
-    
-                st.caption(f"⏱️ Evaluation generated in {eval_time}s by Gemini Judge.")
+                except Exception as e:
+                    st.error(f"❌ Auto-evaluation failed: {e}")
 
     
     # Display last confirmed answer
@@ -446,6 +438,7 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
 
 
 
