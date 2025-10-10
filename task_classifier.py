@@ -57,7 +57,7 @@ def choose_groq_model(prompt: str):
     elif any(x in p for x in ["story", "poem", "creative", "write", "blog", "lyrics"]):
         return "meta-llama/llama-4-maverick-17b-128e-instruct"
     else:
-        return "openai/gpt-oss-20b"
+        return "llama-3.1-8b-instant"
 # =====================
 # Groq Text Generation (API call)
 # =====================
@@ -329,6 +329,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
