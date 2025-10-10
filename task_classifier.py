@@ -503,19 +503,19 @@ with tab4:
 # ---- Date & Time ----
     from datetime import datetime
     import time
-    import pytz
     
-    # Define the timezone for India
-    INDIA_TZ = pytz.timezone('Asia/Kolkata')
-    
-    st.markdown("### 🕒 Live Time in India (IST)")
+    st.markdown("### 🕒 Live Server Time")
     placeholder = st.empty()
     
     while True:
-        now_india = datetime.now(INDIA_TZ).strftime("%A, %d %B %Y | %I:%M:%S %p")
-        placeholder.info(f"{now_india}")
+        # This gets the REAL time from the server's clock
+        now = datetime.now().strftime("%A, %d %B %Y | %I:%M:%S %p")
+        
+        # Update the placeholder
+        placeholder.info(f"{now}")
+        
+        # Wait 1 second
         time.sleep(1)
-
 
 
 
