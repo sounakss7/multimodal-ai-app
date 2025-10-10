@@ -192,7 +192,7 @@ with tab1:
         st.markdown("### 🗂️ Chat History")
         for user_q, assistant_a in st.session_state.conversation:
             st.markdown(f"**User:** {user_q}")
-            st.markdown(assistant_a, language="markdown")
+            st.markdown(assistant_a)
             st.markdown("---")
 
 # =====================
@@ -329,6 +329,7 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+
 
 
 
