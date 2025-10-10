@@ -487,13 +487,8 @@ with tab4:
     placeholder = st.empty()
     
     while True:
-        # Get the current time and set it to the India timezone
         now_india = datetime.now(INDIA_TZ).strftime("%A, %d %B %Y | %I:%M:%S %p")
-        
-        # Update the placeholder with the India time
         placeholder.info(f"{now_india}")
-        
-        # Wait 1 second
         time.sleep(1)
 
     # ---- AI Tip of the Day ----
@@ -522,6 +517,7 @@ with tab4:
         "This section helps you stay informed and productive with quick access to Google Search, "
         "AI news updates, real-time date/time, daily AI tips, and a quick notes pad."
     )
+
 
 
 
