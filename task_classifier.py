@@ -329,6 +329,48 @@ with tab3:
                     for chunk in llm.stream([HumanMessage(content=content)]):
                         final_response += chunk.content or ""
                         response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}") 
+        # =========================
+    # 💻 Code File Upload and Gemini Analysis
+    # =========================
+    st.subheader("💻 Upload a Code File & Ask Gemini")
+
+    uploaded_code = st.file_uploader("📂 Upload a code file", type=["py", "js", "java", "cpp", "c", "ts", "html", "css"])
+    code_question = st.text_input("💬 Ask something about the uploaded code:")
+
+    if st.button("Analyze Code"):
+        if not uploaded_code:
+            st.warning("⚠️ Please upload a code file first.")
+        elif not code_question:
+            st.warning("⚠️ Please enter a question about the code.")
+        else:
+            with st.spinner("🧠 Reading and analyzing your code..."):
+                try:
+                    code_bytes = uploaded_code.read()
+                    code_text = code_bytes.decode("utf-8", errors="ignore")
+
+                    # ✅ Limit very large files to avoid overload
+                    if len(code_text) > 15000:
+                        st.info("🪶 Trimming code to first 15,000 characters for efficient analysis.")
+                        code_text = code_text[:15000]
+
+                    content = [
+                        {
+                            "type": "text",
+                            "text": f"Question: {code_question}\n\nHere is the code:\n\n{code_text}"
+                        }
+                    ]
+
+                    response_placeholder = st.empty()
+                    final_response = ""
+
+                    for chunk in llm.stream([HumanMessage(content=content)]):
+                        final_response += chunk.content or ""
+                        response_placeholder.markdown(f"**Answer (streaming):**\n\n{final_response}")
+
+                except Exception as e:
+                    st.error(f"Error reading file: {e}")
+
+
 
 
 
