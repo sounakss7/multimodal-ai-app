@@ -440,17 +440,23 @@ with tab4:
     st.subheader("🧭 Smart Utility Dashboard")
 
     # ---- Google Search ----
+  
+    from urllib.parse import quote_plus # >>> 1. IMPORT THIS FUNCTION
+    
     st.markdown("### 🔍 Google Search")
     search_query = st.text_input("Search the web:", placeholder="Type your query here...")
     if st.button("Search Google"):
         if search_query.strip():
+            # >>> 2. ENCODE THE QUERY BEFORE USING IT IN THE URL
+            encoded_query = quote_plus(search_query)
+            
             st.markdown(
-                f"[Click here to open search results for **{search_query}**](https://www.google.com/search?q={search_query})",
-                unsafe_allow_html=True,
+                f"[Click here to open search results for **{search_query}**](https://www.google.com/search?q={encoded_query})"
+                # Note: unsafe_allow_html=True is not needed for a simple markdown link, so it can be removed.
             )
         else:
             st.warning("⚠️ Please enter a search query first.")
-
+    
     st.markdown("---")
 
     # ---- Latest AI News ----
@@ -503,6 +509,7 @@ with tab4:
         "This section helps you stay informed and productive with quick access to Google Search, "
         "AI news updates, real-time date/time, daily AI tips, and a quick notes pad."
     )
+
 
 
 
