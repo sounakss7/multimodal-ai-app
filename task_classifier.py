@@ -231,9 +231,9 @@ with tab1:
     
                     # Simulated metric comparison (example metrics)
                    # Simulated metric comparison (example metrics)
-                gemini_time = 1.2  # you can later measure real latency
-                groq_time = 1.8
-                
+                    gemini_time = 1.2  # you can later measure real latency
+                    groq_time = 1.8
+                    
                 # Assign sample metrics based on judge's decision
                 if winner == "Gemini":
                     gemini_accuracy = round(random.uniform(90, 96), 2)
@@ -464,6 +464,7 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
 
 
 
