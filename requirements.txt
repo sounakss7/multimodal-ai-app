@@ -17,3 +17,4 @@ pdf2image
 Pillow
 pymupdf
 concurrent-log-handler
+feedparser
