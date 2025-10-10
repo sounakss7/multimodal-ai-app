@@ -94,7 +94,7 @@ st.set_page_config(page_title="🤖 Multimodal AI App", page_icon="🤖", layout
 
 st.title("🤖 Multimodal AI App (Text + Image Generator + Image Q&A + Voice Input)")
 
-tab1, tab2, tab3 = st.tabs(["💬 Text & Voice Chat", "🎨 Image Generator", "🖼️ Image Q&A"])
+tab1, tab2, tab3, tab4 = st.tabs(["💬 Text & Voice Chat", "🎨 Image Generator", "🖼️ Image Q&A", "🧭 Tools & Widgets"])
 
 # =====================
 # TEXT + VOICE CHAT TAB
@@ -436,6 +436,74 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+with tab4:
+    st.subheader("🧭 Smart Utility Dashboard")
+
+    # ---- Google Search ----
+    st.markdown("### 🔍 Google Search")
+    search_query = st.text_input("Search the web:", placeholder="Type your query here...")
+    if st.button("Search Google"):
+        if search_query.strip():
+            st.markdown(
+                f"[Click here to open search results for **{search_query}**](https://www.google.com/search?q={search_query})",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.warning("⚠️ Please enter a search query first.")
+
+    st.markdown("---")
+
+    # ---- Latest AI News ----
+    st.markdown("### 🗞️ Latest AI & Tech News")
+    try:
+        import feedparser
+        feed_url = "https://news.google.com/rss/search?q=artificial+intelligence&hl=en-IN&gl=IN&ceid=IN:en"
+        feed = feedparser.parse(feed_url)
+        if feed.entries:
+            for entry in feed.entries[:5]:
+                st.markdown(f"🔹 [{entry.title}]({entry.link})")
+        else:
+            st.info("No recent AI news found.")
+    except Exception as e:
+        st.error(f"⚠️ Could not fetch news: {e}")
+
+    st.markdown("---")
+
+    # ---- Date & Time ----
+    from datetime import datetime
+    st.markdown("### 🕒 Current Date & Time")
+    now = datetime.now().strftime("%A, %d %B %Y | %I:%M %p")
+    st.info(now)
+
+    st.markdown("---")
+
+    # ---- AI Tip of the Day ----
+    import random
+    ai_tips = [
+        "💡 Gemini is great for reasoning and summarization tasks.",
+        "⚡ Groq excels in ultra-fast low-latency tasks.",
+        "🎯 Combine both models for speed + accuracy.",
+        "🧠 Always provide context-rich prompts for best results.",
+        "🧩 Experiment with temperature for creativity vs accuracy."
+    ]
+    st.markdown("### 💡 AI Tip of the Day")
+    st.success(random.choice(ai_tips))
+
+    st.markdown("---")
+
+    # ---- Notes Section ----
+    st.markdown("### 📝 Quick Notes")
+    user_notes = st.text_area("Write down your ideas or thoughts here...")
+    if st.button("💾 Save Notes"):
+        st.success("✅ Notes saved temporarily (will reset on refresh).")
+
+    st.markdown("---")
+    st.markdown("### 🎯 Summary")
+    st.write(
+        "This section helps you stay informed and productive with quick access to Google Search, "
+        "AI news updates, real-time date/time, daily AI tips, and a quick notes pad."
+    )
+
 
 
 
