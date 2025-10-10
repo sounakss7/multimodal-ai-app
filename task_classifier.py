@@ -472,42 +472,18 @@ with tab4:
             st.info("No recent AI news found.")
     except Exception as e:
         st.error(f"⚠️ Could not fetch news: {e}")
+# ---- AI Tip of the Day ----
+    import random
+    ai_tips = [
+        "💡 Gemini is great for reasoning and summarization tasks.",
+        "⚡ Groq excels in ultra-fast low-latency tasks.",
+        "🎯 Combine both models for speed + accuracy.",
+        "🧠 Always provide context-rich prompts for best results.",
+        "🧩 Experiment with temperature for creativity vs accuracy."
+    ]
+    st.markdown("### 💡 AI Tip of the Day")
+    st.success(random.choice(ai_tips))
 
-    st.markdown("---")
-  
-    
-    @st.cache_data(ttl=3600)
-    def get_random_quote():
-        """Fetches a random quote from the quotable.io API."""
-        try:
-            response = requests.get("https://api.quotable.io/random")
-            # Check if the request was successful (status code 200)
-            if response.status_code == 200:
-                data = response.json()
-                # Format the quote nicely with the author
-                return f'"{data["content"]}"\n— {data["author"]}'
-            else:
-                return "Failed to fetch a quote. The service might be down."
-        except requests.exceptions.RequestException as e:
-            # Handle network-related errors (e.g., no internet connection)
-            return f"An error occurred: {e}"
-    
-    # --- Streamlit App Layout ---
-    
-    st.title("Quote of the Moment")
-    
-    st.markdown("### 📜 Today's Wisdom")
-    
-    # Fetch and display the quote
-    live_quote = get_random_quote()
-    st.info(live_quote)
-    
-    # Add a button to get a new quote
-    if st.button("Get Another Quote"):
-        # Clear the cache for our function to force a new API call
-        st.cache_data.clear()
-        st.rerun()
-    
     st.markdown("---")
 
     # ---- Notes Section ----
@@ -538,6 +514,7 @@ with tab4:
         
         # Wait 1 second
         time.sleep(1)
+
 
 
 
