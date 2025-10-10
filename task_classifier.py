@@ -87,79 +87,6 @@ def query_groq(prompt: str):
             return f"❌ Groq API Error: {resp.text}"
     except Exception as e:
         return f"⚠️ Groq Error: {e}"
-
-# =====================
-# 🌗 THEME TOGGLE + CUSTOM UI
-# =====================
-# Add a theme toggle in sidebar
-st.sidebar.markdown("### 🎨 Theme Settings")
-theme_mode = st.sidebar.radio("Choose Theme", ["Dark", "Light"], horizontal=True)
-
-# Inject CSS based on theme
-if theme_mode == "Dark":
-    st.markdown("""
-        <style>
-        body, .stApp {
-            background-color: #0E1117;
-            color: #FAFAFA;
-        }
-        .stTextInput > div > div > input, .stTextArea textarea {
-            background-color: #161A23 !important;
-            color: white !important;
-            border: 1px solid #30363D !important;
-        }
-        .stButton > button {
-            background-color: #00ADB5 !important;
-            color: white !important;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-        .stButton > button:hover {
-            background-color: #007A80 !important;
-            color: #fff !important;
-        }
-        .metric-card {
-            background-color: #161A23;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-else:  # Light Mode
-    st.markdown("""
-        <style>
-        body, .stApp {
-            background-color: #F5F7FA;
-            color: #222;
-        }
-        .stTextInput > div > div > input, .stTextArea textarea {
-            background-color: white !important;
-            color: black !important;
-            border: 1px solid #ccc !important;
-        }
-        .stButton > button {
-            background-color: #0078FF !important;
-            color: white !important;
-            border-radius: 10px;
-            font-weight: 600;
-        }
-        .stButton > button:hover {
-            background-color: #005FCC !important;
-            color: #fff !important;
-        }
-        .metric-card {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-
-
 # =====================
 # Streamlit App Layout
 # =====================
@@ -509,6 +436,7 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
 
 
 
