@@ -6,6 +6,7 @@ from PIL import Image
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+import google.generativeai as genai
 from langchain.schema import HumanMessage
 from audio_recorder_streamlit import audio_recorder  # 🎙️ for mic input
 import wave   
@@ -438,6 +439,7 @@ with tab3:
 
                 except Exception as e:
                     st.error(f"Error reading file: {e}")
+
 
 
 
